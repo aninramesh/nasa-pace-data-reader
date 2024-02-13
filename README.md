@@ -1,35 +1,38 @@
 # NASA-PACE-Data-Reader
 
-This repository contains a Python package for reading L1C files from NASA PACE instruments (HARP2, SPEXone, OCI). Development includes planned readers for L2 aerosol and surface products.
+This repository hosts a Python package designed to read L1C files from NASA PACE instruments, including HARP2, SPEXone, and OCI. Future development plans include the addition of readers for L2 aerosol and surface products.
 
-## How to build and upload:
+## Building and Uploading the Package:
 
-Run `sh Install.sh`(make sure to specify correct version) or follow the steps
+To build and upload the package, you can either run the `Install.sh` script (ensure to specify the correct version), or follow the steps outlined below:
 
-Build: Same as before (`python3 -m build`)
+**Build:** Use the same command as before, which is `python3 -m build`.
 
-Upload: (`python3 -m twine upload --repository testpypi dist/*`)
+**Upload:** Use the command `python3 -m twine upload --repository testpypi dist/*`.
 
-Install: (`python3 -m pip install -i https://test.pypi.org/simple/ --no-deps nasa_pace_data_reader==0.0.3`)
+**Install:** Use the command `python3 -m pip install -i https://test.pypi.org/simple/ nasa-pace-data-reader`.
 
-Unistall: (`python3 -m pip uninstall nasa_pace_data_reader`)
+**Uninstall:** Use the command `python3 -m pip uninstall nasa_pace_data_reader`.
 
 ---
 
-Example usage:
+## Example Usage:
+
+Here is a simple example of how to use the package:
 
 ```Python
 from nasa_pace_data_reader import L1
 
 calc = L1.L1C()
 result = calc.add(5, 3)
-print(result)  # Output: 8
-
+print(result)  # This will output: 8
 ```
 
-Explanation of Changes:
 ---
 
+## Change Log:
 
-Key Improvements
 ---
+
+## Key Improvements:
+

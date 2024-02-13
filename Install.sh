@@ -15,9 +15,12 @@ python3 -m build
 python3 -m twine upload --repository testpypi dist/*
 
 # wait for 15 seconds
-echo "Waiting for 15 seconds to make sure the package is uploaded to the test PyPI"
-sleep 15
+echo "Waiting for 5 seconds to make sure the package is uploaded to the test PyPI"
+sleep 5
 
 # Install nasa_pace_data_reader from test PyPI
-echo "python3 -m pip install -i https://test.pypi.org/simple/ --no-deps nasa-pace-data-reader==${VERSION}"
-python3 -m pip install -i https://test.pypi.org/simple/ --no-deps nasa-pace-data-reader==${VERSION}
+echo "Installing nasa_pace_data_reader from test PyPI"
+echo "Run the following command to install the package"
+echo "---------------------------------------------"
+echo "python3 -m pip install -i https://test.pypi.org/simple/ nasa-pace-data-reader"
+
