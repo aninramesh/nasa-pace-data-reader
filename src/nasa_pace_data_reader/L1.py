@@ -60,7 +60,7 @@ class L1C:
                 data[var] = geo_data.variables[var][:]
 
             # Read the data
-            obs_names = ['i', 'q', 'u']
+            obs_names = ['i', 'q', 'u', 'dolp']
             for var in obs_names:
                 data[var] = obs_data.variables[var][:]
 
@@ -101,6 +101,7 @@ class L1B:
         dataNC = Dataset(filename, 'r')
 
         try:
+            # FIXME: This is just a place holder, needs to be updated
             # Read latitude and longitude
             lat = dataNC.variables['latitude'][:]
             lon = dataNC.variables['longitude'][:]
