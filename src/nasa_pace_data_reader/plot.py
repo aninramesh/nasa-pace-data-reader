@@ -9,6 +9,7 @@ class Plot:
         self.bandAngles = range(80, 90)
         self.plotDPI = 160
         self.instrument = 'HARP2'
+        self.reflectance = False
         self.setPlotStyle()
 
 
@@ -117,17 +118,31 @@ class Plot:
         """
         fig, ax = plt.subplots(figsize=(3, 2))
         plot_func = ax.plot if axis else plt.plot
-        plot_func(self.data[xAxis][x,y,self.bandAngles], self.data[dataVar][x, y, self.bandAngles, 0], **kwargs)
+
+        dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis)
 
         if axisLabel:
             plt.xlabel(xAxis)
-            plt.ylabel(dataVar)
+            plt.ylabel(f'{dataVar}\n{unit_}') if unit_ else plt.ylabel(r'R$_%s$' %dataVar)
             plt.title(f'Pixel ({x}, {y}) of the instrument {self.instrument}')
-
+        
+        plot_func(self.data[xAxis][x,y,self.bandAngles], dataVar_, **kwargs)
+        
         plt.show()
 
         if returnHandle:
             return fig, ax
+        
+    def physicalQuantity(self, x, y, dataVar='i', xAxis='scattering_angle',):
+        # plot reflectance or radiance
+        if self.reflectance and dataVar in ['i', 'q', 'u']:
+            # πI/F0
+            dataVar_ = self.data[dataVar][x, y, self.bandAngles, 0]*np.pi/self.data['F0'][self.bandAngles, 0]
+            unit_= ''
+        else:
+            dataVar_ = self.data[dataVar][x, y, self.bandAngles, 0]
+            unit_ = '('+self.data['_units'][dataVar]+')'
+        return dataVar_, unit_
 
     def setFigure(self, figsize=(10, 5), **kwargs):
         """Set the figure size for the plot.
@@ -152,7 +167,7 @@ class Plot:
     # plot all bands in a single plot
     def plotPixelVars(self, x, y, xAxis='scattering_angle',
                      bands = None, saveFig=False,
-                     axis=None, axisLabel=True,
+                     axis=None, axisLabel=True, showUnit=True,
                     **kwargs):
         """
         Plot all bands for a pixel.
@@ -190,6 +205,7 @@ class Plot:
         # define color strings based on the length of the bands try to preserve the color
         colors = ['C%d' %i for i in range(cols)]
         
+        
 
         # plot the data over different bands and variables
         for i, vars in enumerate(self.vars2plot):
@@ -197,13 +213,15 @@ class Plot:
                 # Set the title for the column
                 axAll[i,j].set_title(band) if i == 0 else None
 
+                dataVar_, unit_ = self.physicalQuantity(x, y, vars, xAxis)
+
                 # plot the data
-                axAll[i,j].plot(self.data[xAxis][x,y,self.bandAngles], self.data[vars][x, y, self.bandAngles, 0],
+                axAll[i,j].plot(self.data[xAxis][x,y,self.bandAngles], dataVar_,
                                 '%so-' %colors[j],
                                 label= vars if j ==0 else None, **kwargs)
                 
                 if axisLabel and j == 0:
-                    axAll[i,j].set_ylabel(vars)
+                    axAll[i,j].set_ylabel(f'{vars}\n{unit_}') if unit_ and showUnit else axAll[i,j].set_ylabel(r'R$_%s$' %vars)
                     axAll[i,j].yaxis.set_label_coords(-0.25,0.5)
 
                 if axisLabel and i == len(self.vars2plot)-1:

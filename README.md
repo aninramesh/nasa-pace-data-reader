@@ -4,7 +4,7 @@ This repository hosts a Python package designed to read L1C files from NASA PACE
 
 ## Building and Uploading the Package:
 
-To build and upload the package, you can either run the `sh Install.sh` script (ensure to specify the correct version), or follow the steps outlined below:
+To build and upload the package, you can either run the `sh Install.sh` script (ensure to specify the correct version).
 
 ---
 
