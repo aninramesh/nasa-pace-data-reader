@@ -2,7 +2,15 @@
 
 This repository hosts a Python package designed to read L1C files from NASA PACE instruments, including HARP2, SPEXone, and OCI. Future development plans include the addition of readers for L2 aerosol and surface products.
 
-## Building and Uploading the Package:
+## Installing the library from PyPi
+
+To install the python library "`nasa-pace-data-reader`", follow these steps:
+
+1. Open the command prompt or terminal.
+2. Enter the command `pip install nasa-pace-data-reader`.
+3. It is recommended to run this command in a separate `pip` or `conda` environment to prevent dependency conflicts.
+
+## Building and Uploading the Package (For package maintainers):
 
 To build and upload the package, you can either run the `sh Install.sh` script (ensure to specify the correct version).
 
@@ -13,7 +21,8 @@ To build and upload the package, you can either run the `sh Install.sh` script (
 Here is a simple example of how to use the package:
 
 ```Python
-from nasa_pace_data_reader import L1
+from nasa_pace_data_reader import L1    # Reader library
+from nasa_pace_data_reader import plot  # Plotting library
 
 # Location of the file
 fileName = '/Users/aputhukkudy/Downloads/PACE_HARP2.20220321T101844.L1C.5.2KM.V03.SIM2.1_.nc'
@@ -52,13 +61,30 @@ plt_.bands2plot = ['NIR', 'blue']   # Order in the list is the order of plotting
 
 # plot 
 plt_.plotPixelVars(pixel[0], pixel[1], bands= plt_.bands2plot, alpha=0.5, linewidth=0.5) # you can pass any other arguments to the plot function
-```
 
+# plot RGB image
+# Load the plot class
+plt_ = plot.Plot(l1c_dict)
+
+# Plot RGB
+plt_.plotRGB(scale=1, returnRGB=True)
+
+# plot RGB in default plate carree projection
+plt_.projectedRGB()
+
+# plot RGB in Orthographic projection
+plt_.projectedRGB(proj='Orthographic')
+
+```
 ---
 
 ## Change Log:
 
 ---
 
-## Key Improvements:
+*v0.0.3.14*
+
+- Added the ability to plot projected RGB using `cartopy`.
+- Removed `Basemap` library from the dependencies
+
 

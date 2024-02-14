@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nasa_pace_data_reader"
-version = "0.0.3.13"
+version = "0.0.3.14"
 authors = [
   { name="Anin Puthukkudy", email="aputhukkudy@umbc.edu" },
 ]
@@ -18,10 +18,8 @@ classifiers = [
 ]
 dependencies = [
     "matplotlib>=3.6",
-    "basemap>=1.3.0",
     "numpy>=1.21.2",
     "netCDF4>=1.5.7",
-    "basemap-data-hires>=1.2.1",
     "notebook>=6.4.3",
     "scipy>=1.7.1",
     "cartopy>=0.19.0",

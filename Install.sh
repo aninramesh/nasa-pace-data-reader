@@ -20,7 +20,7 @@ if [ $repo = "testpypi" ]; then
 else
     echo "Uploading to PyPI"
 fi
-# Run twine upload command
+# Run twine upload command (to upload the package to the repository, the api key should stored in the ~/.pypirc file)
 python3 -m twine upload --repository ${repo} dist/*
 
 # wait for 15 seconds
