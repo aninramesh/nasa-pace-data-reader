@@ -1,6 +1,11 @@
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
-from mpl_toolkits.basemap import Basemap
+from scipy import interpolate
+import cartopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 class Plot:
     def __init__(self, data):
@@ -25,11 +30,12 @@ class Plot:
                     'xtick.top': 'True',
                     'mathtext.fontset': 'cm',
                     'figure.dpi': self.plotDPI,
-                    'font.family': 'cmr10',
+                    'font.family': 'sans-serif',
+                    'font.sans-serif': ['Tahoma'],
                     'axes.unicode_minus': False
         })
 
-    def setBandAngles(self, band):
+    def setBandAngles(self, band=None):
         """Set the band angles for the plot.
         Args:
             bandAngles (list): The band angles for the plot.
@@ -37,6 +43,7 @@ class Plot:
         Returns:
             None
         """
+        band = self.band if band == None else band
         if self.instrument == 'HARP2':
             band_angle_ranges = {
                 'blue': range(80, 90),
@@ -116,17 +123,18 @@ class Plot:
         Returns:
             None
         """
+        assert xAxis in ['scattering_angle', 'view_angles'], 'Invalid x-axis variable'
         fig, ax = plt.subplots(figsize=(3, 2))
         plot_func = ax.plot if axis else plt.plot
 
-        dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis)
+        xData_, dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis=xAxis)
 
         if axisLabel:
             plt.xlabel(xAxis)
             plt.ylabel(f'{dataVar}\n{unit_}') if unit_ else plt.ylabel(r'R$_%s$' %dataVar)
             plt.title(f'Pixel ({x}, {y}) of the instrument {self.instrument}')
         
-        plot_func(self.data[xAxis][x,y,self.bandAngles], dataVar_, **kwargs)
+        plot_func(xData_, dataVar_, **kwargs)
         
         plt.show()
 
@@ -141,8 +149,16 @@ class Plot:
             unit_= ''
         else:
             dataVar_ = self.data[dataVar][x, y, self.bandAngles, 0]
-            unit_ = '('+self.data['_units'][dataVar]+')'
-        return dataVar_, unit_
+            unit_ = '('+self.data['_units'][dataVar]+')' if not dataVar == 'dolp' else ''
+        
+        # for the scattering angle
+        if xAxis == 'scattering_angle':
+            xData_ = self.data[xAxis][x, y, self.bandAngles]
+        # for the view angles
+        elif xAxis == 'view_angles':
+            xData_ = self.data[xAxis][self.bandAngles]
+
+        return xData_, dataVar_, unit_
 
     def setFigure(self, figsize=(10, 5), **kwargs):
         """Set the figure size for the plot.
@@ -185,6 +201,7 @@ class Plot:
         Returns:
             None
         """
+        assert xAxis in ['scattering_angle', 'view_angles'], 'Invalid x-axis variable'
         if bands is None:
             self.plotAll = True
         self.bands2plot = self.bands if bands is None else bands
@@ -205,27 +222,31 @@ class Plot:
         # define color strings based on the length of the bands try to preserve the color
         colors = ['C%d' %i for i in range(cols)]
         
-        
-
         # plot the data over different bands and variables
         for i, vars in enumerate(self.vars2plot):
             for j, band in enumerate(self.bands2plot):
                 # Set the title for the column
                 axAll[i,j].set_title(band) if i == 0 else None
 
-                dataVar_, unit_ = self.physicalQuantity(x, y, vars, xAxis)
+                xData_, dataVar_, unit_ = self.physicalQuantity(x, y, vars, xAxis=xAxis)
 
                 # plot the data
-                axAll[i,j].plot(self.data[xAxis][x,y,self.bandAngles], dataVar_,
+                axAll[i,j].plot(xData_, dataVar_,
                                 '%so-' %colors[j],
                                 label= vars if j ==0 else None, **kwargs)
                 
                 if axisLabel and j == 0:
-                    axAll[i,j].set_ylabel(f'{vars}\n{unit_}') if unit_ and showUnit else axAll[i,j].set_ylabel(r'R$_%s$' %vars)
+                    if (unit_ and showUnit):
+                        axAll[i,j].set_ylabel(f'{vars}\n{unit_}') 
+                    elif self.reflectance:
+                        axAll[i,j].set_ylabel(r'R$_%s$' %vars) if not vars == 'dolp' else axAll[i,j].set_ylabel(vars)
+                    else:
+                        axAll[i,j].set_ylabel(vars)
                     axAll[i,j].yaxis.set_label_coords(-0.25,0.5)
 
                 if axisLabel and i == len(self.vars2plot)-1:
                     axAll[i,j].set_xlabel(xAxis)
+
         plt.suptitle(f'Pixel ({x}, {y}) of the instrument {self.instrument}')
         plt.tight_layout()
         plt.show()
@@ -234,28 +255,171 @@ class Plot:
             location = f'./{self.instrument}_pixel_{x}_{y}.png'
             figAll.savefig(location, dpi=self.plotDPI)
 
-    def plotRGB(self):
+    def plotRGB(self, var='i', viewAngleIdx=[38, 4, 84],
+                 scale= 1, normFactor=200, returnRGB=False,
+                 plot=True, **kwargs):
+
+        # find the index to plot
+        idx = viewAngleIdx
+        assert len(idx) == 3, 'Invalid number of indices'
+
+        print(self.data[var].shape[0])
         # Create a 3D array to store the RGB data
-        rgb = np.zeros((self.data['i'].shape[0], self.data['i'].shape[1], 3), dtype=np.float32)
-        rgb[:, :, 0] = self.data['i']
-        rgb[:, :, 1] = self.data['q']
-        rgb[:, :, 2] = self.data['u']
+        rgb = np.zeros((self.data[var].shape[0], self.data[var].shape[1], 3), dtype=np.float32)
+        rgb[:, :, 0] = self.data[var][:,:,idx[0],0]
+        rgb[:, :, 1] = self.data[var][:,:,idx[1],0]
+        rgb[:, :, 2] = self.data[var][:,:,idx[2],0]
+
+        # if normFactor is scalar, divide the RGB by the scalar else divide in a loop
+        if not isinstance(normFactor, int):
+            for i in range(3):
+                rgb[:, :, i] = rgb[:, :, i]/normFactor[i]*scale
+        else:
+            rgb = rgb/normFactor*scale
+        # copy the rgb to a new variable
 
         # Plot the RGB image
-        plt.imshow(rgb)
+        if plot:
+            plt.imshow(rgb)
+            plt.title(f'RGB image of the instrument {self.instrument}\n using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}')
+            plt.show()
+
+        if returnRGB:
+            self.rgb = rgb
+
+    # Plot projected RGB using Cartopy
+    def projectedRGB(self, rgb=None, scale=1, ax=None,
+                     var='i', viewAngleIdx=[38, 4, 84],
+                     normFactor=200, proj='PlateCarree',
+                    **kwargs):
+
+        # if RGB does not exist, run the plotRGB method
+        if rgb is None:
+            print('RGB data not found. Running plotRGB method')
+            self.plotRGB(var=var, viewAngleIdx=viewAngleIdx, scale=scale, normFactor=normFactor, returnRGB=True, plot=False,
+                               **kwargs)
+
+        # Check the shape of the RGB data
+        assert self.rgb.shape[2] == 3, 'Invalid RGB data'
+
+        # Get the latitude and longitude
+        lat = self.data['latitude']
+        lon = self.data['longitude']
+
+        if ax is None:
+            fig = plt.figure(figsize=(4, 5))
+
+        rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False) #Created projection image
+
+        #Prepare figure
+        # Plotting in the axes
+        lon_center = (lon.max() + lon.min()) / 2
+        lat_center = (lat.max() + lat.min()) / 2
+
+        # Create a border of the images        
+        rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
+
+        if proj == 'Orthographic':
+            ax = plt.axes(projection=ccrs.Orthographic(lon_center, lat_center))
+            ax.stock_img()
+            ax.set_global()
+            ax.imshow(rgb_new, origin='lower', vmin=0,vmax=0.5, extent=rgb_extent, transform=ccrs.PlateCarree())
+        elif proj == 'PlateCarree':
+            ax = plt.axes(projection=ccrs.PlateCarree())
+            gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+                            linewidth=1, color='white', alpha=0.2, linestyle='--')
+            gl.xlabels_top = False
+            gl.ylabels_right = False
+            gl.xlocator = mticker.FixedLocator(np.around(np.linspace(np.nanmin(nlon),np.nanmax(nlon),6),2))
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+            # Scale the rgb image and adjust extent
+            ax.imshow(rgb_new, origin='lower', vmin=0,vmax=0.5, extent=rgb_extent)
+            ax.add_feature(cfeature.COASTLINE,edgecolor='black')
+        else:
+            print('Invalid projection method')
+
+        # set a margin around the data
+        ax.set_xmargin(0.05)
+        ax.set_ymargin(0.05)
+
+        plt.box(on=None)
         plt.show()
 
-    # Plot projected RGB using Basemap
-    def plotProjectedRGB(self, lat, lon):
-        # Create a 3D array to store the RGB data
-        rgb = np.zeros((self.data['i'].shape[0], self.data['i'].shape[1], 3), dtype=np.float32)
-        rgb[:, :, 0] = self.data['i']
-        rgb[:, :, 1] = self.data['q']
-        rgb[:, :, 2] = self.data['u']
+        # ax.gridlines()
 
-        # Create a Basemap instance
-        m = Basemap(projection='cyl', llcrnrlat=lat.min(), urcrnrlat=lat.max(), llcrnrlon=lon.min(), urcrnrlon=lon.max(), resolution='c')
+    def meshgridRGB(self, LON, LAT, proj_size=(905,400), return_mapdata=False):
+        """ Project the RGB data using meshgrid.
+        
+        Args:
+            LON (np.ndarray): The longitude data.
+            LAT (np.ndarray): The latitude data.
+            proj_size (tuple, optional): The size of the projection. Defaults to (905,400).
+            return_mapdata (bool, optional): If True, the map data is returned. Defaults to False.
+            
+        Returns:
+            np.ndarray: The projected RGB data.
+            
+        """
+        rr = self.rgb[:,:,0]
+        rr[0:-1,0] = 0
+        rr[0:-1,-1] = 0
+        rr[0,0:-1] = 0
+        rr[-1,0:-1] = 0
+        gg = self.rgb[:,:,1]
+        gg[0:-1,0] = 0
+        gg[0:-1,-1] = 0
+        gg[0,0:-1] = 0
+        gg[-1,0:-1] = 0
+        bb = self.rgb[:,:,2]
+        bb[0:-1,0] = 0
+        bb[0:-1,-1] = 0
+        bb[0,0:-1] = 0
+        bb[-1,0:-1] = 0
 
-        # Plot the projected RGB image
-        m.imshow(rgb)
-        plt.show()
+        mx_lat = np.max(LAT)
+        mn_lat = np.min(LAT)
+        lat0 = 1/2.*(mn_lat+mx_lat)
+
+        mx_lon = np.max(LON)
+        mn_lon = np.min(LON)
+        lon0 = 1/2.*(mn_lon+mx_lon)
+
+        x_new = proj_size[0]
+        y_new = proj_size[0]
+        xx = np.linspace(mn_lon,mx_lon,x_new)
+        yy = np.linspace(mn_lat,mx_lat,y_new)
+        newxx, newyy = np.meshgrid(xx,yy)
+
+        newrr = interpolate.griddata( (LON.ravel(),LAT.ravel()), rr.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
+        newgg = interpolate.griddata( (LON.ravel(),LAT.ravel()), gg.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
+        newbb = interpolate.griddata( (LON.ravel(),LAT.ravel()), bb.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
+
+        newrr = newrr.reshape(x_new,y_new)
+        newgg = newgg.reshape(x_new,y_new)
+        newbb = newbb.reshape(x_new,y_new)
+
+        newrr[newrr>1] = 1
+        newrr[newrr<0] = 0
+        newrr[newbb==0] = 0
+        newrr[newgg==0] = 0
+
+        newgg[newgg>1] = 1
+        newgg[newgg<0] = 0
+        newgg[newbb==0] = 0
+        newgg[newrr==0] = 0
+
+        newbb[newbb>=1] = 1
+        newbb[newbb<0] = 0
+        newbb[newrr==0] = 0
+        newbb[newgg==0] = 0
+
+        rgb_proj = np.zeros([np.shape(newrr)[0],np.shape(newrr)[1],3])
+        rgb_proj[:,:,0] = newrr
+        rgb_proj[:,:,1] = newgg
+        rgb_proj[:,:,2] = newbb
+
+        if return_mapdata:
+            return rgb_proj, (lon0,lat0), ((mn_lon,mx_lon),(mn_lat,mx_lat))
+        else:
+            return rgb_proj,xx,yy
