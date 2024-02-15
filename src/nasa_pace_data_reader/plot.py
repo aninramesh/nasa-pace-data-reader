@@ -17,6 +17,7 @@ class Plot:
         self.plotDPI = 160
         self.instrument = 'HARP2'
         self.reflectance = False
+        self.verbose = False
         self.setPlotStyle()
 
 
@@ -59,7 +60,7 @@ class Plot:
             print('Instrument not supported yet. Please use HARP2.')
 
 
-    def setBand(self, band):
+    def setBand(self, band, verbose=True):
         """Set the band for the plot.
         Args:
             band (str): The band for the plot.
@@ -73,7 +74,7 @@ class Plot:
 
         # set the angle specification based on the instrument
         self.setBandAngles(self.band)
-        print(f'Band set to {self.band}')
+        print(f'Band set to {self.band}') if verbose else None
 
 
     def setDPI(self, dpi):
@@ -228,7 +229,7 @@ class Plot:
         # based on the instrument, set the band angles 
         if axis is None:
             # Define the size of each subplot
-            subplot_size = (2, 1)
+            subplot_size = (2, 1.5)
             rows = len(self.vars2plot)
             cols = len(self.bands2plot)
 
@@ -247,6 +248,10 @@ class Plot:
                 # Set the title for the column
                 axAll[i,j].set_title(band) if i == 0 else None
 
+                # set the band and angles
+                self.setBand(band, verbose=self.verbose)
+
+                # get the physical quantity
                 xData_, dataVar_, unit_ = self.physicalQuantity(x, y, vars, xAxis=xAxis)
 
                 # plot the data

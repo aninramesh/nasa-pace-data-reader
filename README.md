@@ -106,6 +106,8 @@ plt_.projectVar('u',  viewAngle=-35)
 ## Change Log:
 
 ---
+### v0.0.3.16
+- The bug related to plotting multiple band data has been resolved.
 
 ### v0.0.3.15
 - Option to project one variable to the map
