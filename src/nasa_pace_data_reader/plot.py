@@ -145,7 +145,7 @@ class Plot:
         if returnHandle:
             return fig, ax
         
-    def physicalQuantity(self, x, y, dataVar='i', xAxis='scattering_angle',):
+    def physicalQuantity(self, x=None, y=None, dataVar='i', xAxis='scattering_angle',):
         """Get the physical quantity for the plot.
 
         Args:
@@ -159,6 +159,8 @@ class Plot:
             dataVar_ (np.ndarray): The y-axis data.
             unit_ (str): The unit of the data.
         """
+        if x == None and y == None:
+            x, y = 100, 200 # default values
         # plot reflectance or radiance
         if self.reflectance and dataVar in ['i', 'q', 'u']:
             # πI/F0
@@ -321,6 +323,139 @@ class Plot:
         if returnRGB:
             self.rgb = rgb
 
+    
+    def projectVar(self, var='i', viewAngleIdx=None, viewAngle= 0,
+                   proj='PlateCarree', colorbar=True, varAlpha=1,
+                   stockImage=False, **kwargs):
+        """ Project a single variable of the data to the earth projection using Cartopy.
+        
+        Args:
+            var (str, optional): The variable to plot. Defaults to 'i'.
+            viewAngleIdx (list, optional): The view angle indices. Defaults to [38].
+            proj (str, optional): The projection method. Defaults to 'PlateCarree'.
+            colorbar (bool, optional): If True, the colorbar is added. Defaults to False.
+            varAlpha (int, optional): The alpha value for the variable. Defaults to 1.
+            stockImage (bool, optional): If True, the stock image is added. Defaults to False.
+            **kwargs: Variable length argument list to pass to the plot function.
+            
+        Returns:
+            None
+        """
+
+        # Check the number of indices
+        assert proj in ['PlateCarree', 'Orthographic'], 'Invalid projection method'
+        assert var in self.data.keys(), 'Invalid variable, use one of the available variables %s' %self.data.keys()
+
+        # Define which angle to plot
+        if viewAngleIdx is None:
+            # find the nadir in self.bandAngles where the difference with a reference angle is minimum
+            viewAngleIdx = np.argmin(np.abs(self.data['view_angles'][self.bandAngles]-viewAngle))
+            # viewAngleIdx = [np.where(self.data['view_angles'][self.bandAngles])]
+        
+        viewAngle = self.data['view_angles'][self.bandAngles][viewAngleIdx]
+
+        # Get the latitude and longitude
+        lat = self.data['latitude']
+        lon = self.data['longitude']
+
+        # center of the plot
+        lon_center = (lon.max() + lon.min()) / 2
+        lat_center = (lat.max() + lat.min()) / 2
+
+        # default kwargs
+        kwargs = dict()
+        kwargs['linewidth'] = 1
+        kwargs['color'] = 'y'
+        kwargs['alpha'] = 0.25
+        kwargs['linestyle'] = '-.'
+
+        # default figsize
+        figsize = (4, 5)  
+
+        if kwargs:
+            # check the kwargs keys and modify the default values
+            for key, value in kwargs.items():
+                if key in kwargs:
+                    kwargs[key] = value
+                if key in ['figsize']:
+                    figsize = value
+
+        # Prepare figure and axes
+        fig = plt.figure(figsize=figsize)
+        if proj == 'PlateCarree':
+            ax = plt.axes(projection=ccrs.PlateCarree())
+            # Set up gridlines and labels
+            gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+                                **kwargs)
+            gl.xlabels_top = False
+            gl.ylabels_right = False
+            gl.xlocator = mticker.FixedLocator(np.around(np.linspace(np.nanmin(lon),np.nanmax(lon),6),2))
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
+
+        elif proj == 'Orthographic':
+            ax = plt.axes(projection=ccrs.Orthographic(central_longitude=lon_center, central_latitude=lat_center))
+        else:
+            print('Invalid projection method')
+        
+        # setup the gridlines
+        ax.coastlines()
+        ax.set_global()
+        ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
+        ax.stock_img() if stockImage else ax.add_feature(cfeature.OCEAN, zorder=0) ; ax.add_feature(cfeature.LAND, zorder=0, edgecolor='black')
+        
+        # plot the data with alpha value
+        if varAlpha:
+            kwargs['alpha'] = varAlpha
+
+        # if reflectance is True, plot the reflectance
+        if self.reflectance and var in ['i', 'q', 'u']:
+            # πI/F0
+            data_ = self.data[var][:,:,viewAngleIdx,0]*np.pi/self.data['F0'][viewAngleIdx, 0]
+        else:
+            data_ = self.data[var][:,:,viewAngleIdx,0]
+
+        im = plt.contourf(lon, lat,
+                          data_, 60,
+                          transform=ccrs.PlateCarree(), **kwargs)
+        
+        # select var and units
+        var, unit_ = self.reflectanceChange(var) if self.reflectance else (var, self.data['_units'][var])
+        # var = '%s_' %var
+        # add colorbar with same size as the y axis length and set the label
+        if colorbar:
+            cax = fig.add_axes([ax.get_position().x1+0.01,ax.get_position().y0,0.02,ax.get_position().height])
+            plt.colorbar(im, cax=cax)
+
+            # add the label to the colorbar
+            cax.set_ylabel(f'${var}{{({self.band})}}$ ({unit_})')
+
+        # set a margin around the data
+        ax.set_xmargin(0.05)
+        ax.set_ymargin(0.05)
+
+        # round the view angle to 2 decimal places
+        ax.set_title(f'${var}{{({self.band})}}$ at {round(float(viewAngle), 2)}° viewing angle \nof the instrument {self.instrument}')
+        plt.show()
+
+    def reflectanceChange(self, var):
+        """Change the variable to reflectance if reflectance is True.
+
+        Args:
+            var (str): The variable to change.
+
+        Returns:
+            var (str): The variable to reflectance.
+            units_ (str): The units of the variable.
+        """
+
+        # if reflectance is True, change the varstring to reflectance only for ['i', 'q', 'u']
+        if self.reflectance and var in ['i', 'q', 'u']:
+            var = 'R_%s' %var
+            units_ = ''
+        return var, units_
+
+
 
     # Plot projected RGB using Cartopy
     def projectedRGB(self, rgb=None, scale=1, ax=None,
@@ -360,7 +495,6 @@ class Plot:
             fig = plt.figure(figsize=(4, 5))
 
         rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False) #Created projection image
-
         
         # Plotting in the axes
         lon_center = (lon.max() + lon.min()) / 2

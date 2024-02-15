@@ -18,6 +18,9 @@ To build and upload the package, you can either run the `sh Install.sh` script (
 
 ## Example Usage:
 
+See the example python notebook [Examples/L1C-example.ipynb](https://github.com/aninramesh/nasa-pace-data-reader/blob/main/Examples/L1C-example.ipynb)
+
+
 Here is a simple example of how to use the package:
 
 ```Python
@@ -32,12 +35,25 @@ l1c = L1.L1C()
 l1c_dict = l1c.read(fileName)
 
 # Print the keys and the shape of the data
-[print('{:>24}: {}'.format(key, l1c_dict[key].shape)) for key in l1c_dict.keys()][0]
+l1c_dict.keys()
+for key in l1c_dict.keys():
+    if key != '_units':
+        print('{:<24}:{}'.format(key, l1c_dict[key].shape))
 
+# Define the pixel
 pixel = [250,300]
 
 # Load the plot class
 plt_ = plot.Plot(l1c_dict)
+
+# set which band to plot
+band = 'Blue'
+plt_.setBand(band)
+
+# Read the 'i' for a pixel
+i = l1c_dict['i'][pixel[0], pixel[1], plt_.bandAngles]
+print('i:', i)
+print('viewing angles:', l1c_dict['view_angles'][plt_.bandAngles])
 
 # Set the dpi
 plt_.setDPI(256)
@@ -75,6 +91,15 @@ plt_.projectedRGB()
 # plot RGB in Orthographic projection
 plt_.projectedRGB(proj='Orthographic')
 
+# plot one variable in a specific projection at closest viewing angle to nadir
+band = 'Red'
+plt_.setBand(band)
+plt_.projectVar('i',  dpi=300)
+
+# Plotting reflectance at closest viewing angle to -35 degrees
+plt_.reflectance = True
+plt_.projectVar('u',  viewAngle=-35)
+
 ```
 ---
 
@@ -82,7 +107,11 @@ plt_.projectedRGB(proj='Orthographic')
 
 ---
 
-*v0.0.3.14*
+### v0.0.3.15
+- Option to project one variable to the map
+- the viewing angle can be specified easily
+
+### v0.0.3.14
 
 - Added the ability to plot projected RGB using `cartopy`.
 - Removed `Basemap` library from the dependencies
