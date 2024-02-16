@@ -106,6 +106,9 @@ plt_.projectVar('u',  viewAngle=-35)
 ## Change Log:
 
 ---
+### v0.0.3.17
+- Added the option to load `OCI` L1C file and plot the spectrum
+
 ### v0.0.3.16
 - The bug related to plotting multiple band data has been resolved.
 

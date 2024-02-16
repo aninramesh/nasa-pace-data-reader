@@ -10,12 +10,28 @@ import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 class Plot:
-    def __init__(self, data):
+    def __init__(self, data, instrument='HARP2'):
         self.data = data
-        self.band = 'blue'
-        self.bandAngles = range(80, 90)
-        self.plotDPI = 160
-        self.instrument = 'HARP2'
+        self.plotDPI = 240
+        self.xAxis = 'scattering_angle'
+        if instrument.lower() == 'harp2':
+            self.instrument = 'HARP2'
+            # by default set the band to blue
+            self.band = 'blue'
+            self.bandAngles = range(80, 90)
+            self.wavIndex = 0
+
+        elif instrument.lower() == 'spexone':
+            self.instrument = 'SPEXone'
+
+        elif instrument.lower() == 'oci':
+            self.instrument = 'OCI'
+            self.xAxis = 'intensity_wavelength'
+            self.band = 'all'
+            self.wavIndex = range(0, self.data['intensity_wavelength'].shape[1])
+            # find the index of wavelengths closest to 440 nm
+            self.bandAngles = range(0,2) # only two angles for OCI
+        self.setInstrument(self.instrument)
         self.reflectance = False
         self.verbose = False
         self.setPlotStyle()
@@ -57,7 +73,8 @@ class Plot:
             }
             self.bandAngles = band_angle_ranges.get(band, None)
         else:
-            print('Instrument not supported yet. Please use HARP2.')
+            # Hard Coded for now
+            self.bandAngles = range(0, 5) if self.instrument == 'SPEXone' else None
 
 
     def setBand(self, band, verbose=True):
@@ -69,12 +86,23 @@ class Plot:
             None
         """
         band_ = band.lower()
-        assert band_ in ['blue', 'green', 'red', 'nir', 'swir1', 'swir2'], 'Invalid band'
+        assert band_ in ['blue', 'green', 'red', 'nir', 'swir1', 'swir2',  'all'], 'Invalid band'
         self.band = band_
 
         # set the angle specification based on the instrument
-        self.setBandAngles(self.band)
-        print(f'Band set to {self.band}') if verbose else None
+        self.setBandAngles(self.band) if self.instrument == 'HARP2' else None
+
+        # for oci, set the wavelength index
+        if self.instrument == 'OCI':
+            if self.band == 'blue':
+                self.wavIndex = np.argmin(np.abs(self.data['intensity_wavelength']-440)) 
+            elif self.band == 'all':
+                self.wavIndex = range(0, self.data['intensity_wavelength'].shape[1])
+            # self.setBandAngles(band=self.band)
+        else:
+            self.wavIndex = 0
+
+        print(f'...Band set to {self.band}') if verbose else None
 
 
     def setDPI(self, dpi):
@@ -110,11 +138,25 @@ class Plot:
 
             # variable to plot
             self.vars2plot = ['i', 'q', 'u', 'dolp']
+        
+        elif self.instrument == 'SPEXone':
+            self.bands = ['blue', 'green', 'red', 'nir']
+            self.allBandAngles = [self.setBandAngles(band) for band in self.bands]
+
+            # variable to plot
+            self.vars2plot = ['I', 'Q_over_I', 'U_over_I', 'DOLP']
+
+        elif self.instrument == 'OCI':
+            self.bands = ['all']
+            # self.allBandAngles = [self.setBandAngles(band) for band in self.bands]
+
+            # variable to plot
+            self.vars2plot = ['I']
 
         print(f'Instrument set to {self.instrument}')
 
 
-    def plotPixel(self, x, y, dataVar='i', xAxis='scattering_angle',
+    def plotPixel(self, x, y, dataVar='i', xAxis=None,
                   axis=None, axisLabel=True, returnHandle=False,
                     **kwargs):
         """Plot the data for a pixel.
@@ -128,7 +170,8 @@ class Plot:
         Returns:
             None
         """
-        assert xAxis in ['scattering_angle', 'view_angles'], 'Invalid x-axis variable'
+        xAxis = self.xAxis if xAxis == None else xAxis
+        assert xAxis in ['scattering_angle', 'view_angles', 'intensity_wavelength'], 'Invalid x-axis variable'
         fig, ax = plt.subplots(figsize=(3, 2))
         plot_func = ax.plot if axis else plt.plot
 
@@ -138,7 +181,8 @@ class Plot:
             plt.xlabel(xAxis)
             plt.ylabel(f'{dataVar}\n{unit_}') if unit_ else plt.ylabel(r'R$_%s$' %dataVar)
             plt.title(f'Pixel ({x}, {y}) of the instrument {self.instrument}')
-        
+
+        # Plot the data
         plot_func(xData_, dataVar_, **kwargs)
         
         plt.show()
@@ -160,16 +204,37 @@ class Plot:
             dataVar_ (np.ndarray): The y-axis data.
             unit_ (str): The unit of the data.
         """
+
         if x == None and y == None:
             x, y = 100, 200 # default values
+
         # plot reflectance or radiance
-        if self.reflectance and dataVar in ['i', 'q', 'u']:
-            # πI/F0
-            dataVar_ = self.data[dataVar][x, y, self.bandAngles, 0]*np.pi/self.data['F0'][self.bandAngles, 0]
-            unit_= ''
-        else:
-            dataVar_ = self.data[dataVar][x, y, self.bandAngles, 0]
-            unit_ = '('+self.data['_units'][dataVar]+')' if not dataVar == 'dolp' else ''
+        if self.instrument == 'HARP2':
+            if self.reflectance and dataVar.lower() in self.vars2plot:
+                # πI/F0
+                dataVar_ = self.data[dataVar][x, y, self.bandAngles,
+                                                    self.wavIndex]*np.pi/self.data['F0'][self.bandAngles, self.wavIndex]
+                unit_= ''
+            else:
+                dataVar_ = self.data[dataVar][x, y, self.bandAngles, self.wavIndex]
+                unit_ = '('+self.data['_units'][dataVar]+')' if not dataVar == 'dolp' else ''
+
+        elif self.instrument == 'OCI':
+            # find if all values in a 2d array is masked
+            if self.reflectance and dataVar in self.vars2plot:
+                # πI/F0
+                for i in self.bandAngles:
+                    if not np.all(np.ma.getmask(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])):
+                        dataVar_ = self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex]*np.pi/self.data['F0'][self.bandAngles[i], self.wavIndex]
+                        continue
+                unit_= ''
+            else:
+                for i in self.bandAngles:
+                    # check if the data is masked, for the case of OCI only one viewing angle at a time
+                    if not np.all(np.ma.getmask(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])):
+                        dataVar_ = self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex]
+                        continue
+                unit_ = '('+self.data['_units'][dataVar]+')' if not dataVar == 'dolp' else ''
         
         # for the scattering angle
         if xAxis == 'scattering_angle':
@@ -177,6 +242,8 @@ class Plot:
         # for the view angles
         elif xAxis == 'view_angles':
             xData_ = self.data[xAxis][self.bandAngles]
+        elif xAxis == 'intensity_wavelength':
+            xData_ = self.data[xAxis][self.bandAngles[i]] if self.instrument == 'OCI' else self.data[xAxis][self.bandAngles]
 
         return xData_, dataVar_, unit_
 
@@ -321,7 +388,7 @@ class Plot:
 
         # Plot the RGB image
         if plot:
-            plt.imshow(rgb)
+            plt.imshow(rgb, origin='lower')
             plt.title(f'RGB image of the instrument {self.instrument}\n using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}')
             plt.show()
 
