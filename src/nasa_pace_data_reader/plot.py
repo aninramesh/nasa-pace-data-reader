@@ -1,6 +1,7 @@
 import os
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from scipy import interpolate
 
@@ -156,7 +157,7 @@ class Plot:
         print(f'Instrument set to {self.instrument}')
 
 
-    def plotPixel(self, x, y, dataVar='i', xAxis=None,
+    def plotPixel(self, x, y, dataVar='i', xAxis=None, xlim=None, ylim=None,
                   axis=None, axisLabel=True, returnHandle=False,
                     **kwargs):
         """Plot the data for a pixel.
@@ -172,23 +173,32 @@ class Plot:
         """
         xAxis = self.xAxis if xAxis == None else xAxis
         assert xAxis in ['scattering_angle', 'view_angles', 'intensity_wavelength'], 'Invalid x-axis variable'
-        fig, ax = plt.subplots(figsize=(3, 2))
-        plot_func = ax.plot if axis else plt.plot
 
         xData_, dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis=xAxis)
 
+        # Plot the data
+        fig_, ax_ = plt.subplots(figsize=(3, 2)) if axis == None else (None, axis)
+        ax_.plot(xData_, dataVar_, **kwargs)
         if axisLabel:
             plt.xlabel(xAxis)
             plt.ylabel(f'{dataVar}\n{unit_}') if unit_ else plt.ylabel(r'R$_%s$' %dataVar)
             plt.title(f'Pixel ({x}, {y}) of the instrument {self.instrument}')
 
-        # Plot the data
-        plot_func(xData_, dataVar_, **kwargs)
-        
+        # if oci, plot linear+log  in x axis
+        if self.instrument == 'OCI' and xAxis == 'intensity_wavelength':
+            if xlim:
+                ax_.set_xlim(xlim)
+                ax_.set_xlim((xlim[0], xlim[1]))
+                ax_.set_xticks([300, 400, 500, 600, 700, 800, 900])
+        # set the limits
+        if ylim:
+            ax_.set_ylim(ylim)
+            ax_.set_ylim((ylim[0], ylim[1]))
+
         plt.show()
 
         if returnHandle:
-            return fig, ax
+            return fig_, ax_
         
     def physicalQuantity(self, x=None, y=None, dataVar='i', xAxis='scattering_angle',):
         """Get the physical quantity for the plot.
@@ -581,6 +591,10 @@ class Plot:
             ax = plt.axes(projection=ccrs.Orthographic(lon_center, lat_center))
             ax.stock_img()
             ax.set_global()
+
+            # mask the black pane
+            rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
+
             # Display the image in the projection
             ax.imshow(rgb_new, origin='lower', vmin=0, vmax=0.5, extent=rgb_extent, transform=ccrs.PlateCarree())
 
@@ -594,6 +608,10 @@ class Plot:
             gl.xlocator = mticker.FixedLocator(np.around(np.linspace(np.nanmin(nlon),np.nanmax(nlon),6),2))
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
+
+            # mask the black pane
+            rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
+            
             # Display the image in the projection
             ax.imshow(rgb_new, origin='lower', vmin=0, vmax=0.5, extent=rgb_extent)
             # Add coastline feature

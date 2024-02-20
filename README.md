@@ -106,6 +106,9 @@ plt_.projectVar('u',  viewAngle=-35)
 ## Change Log:
 
 ---
+### v0.0.3.18
+- Masked the black pixels in the projected RGB
+
 ### v0.0.3.17
 - Added the option to load `OCI` L1C file and plot the spectrum
 
