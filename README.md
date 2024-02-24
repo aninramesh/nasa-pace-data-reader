@@ -2,6 +2,10 @@
 
 This repository hosts a Python package designed to read L1C files from NASA PACE instruments, including HARP2, SPEXone, and OCI. Future development plans include the addition of readers for L2 aerosol and surface products.
 
+## Dependencies
+---
+- Python v3.10 and above
+
 ## Installing the library from PyPi
 
 To install the python library "`nasa-pace-data-reader`", follow these steps:
@@ -9,6 +13,11 @@ To install the python library "`nasa-pace-data-reader`", follow these steps:
 1. Open the command prompt or terminal.
 2. Enter the command `pip install nasa-pace-data-reader`.
 3. It is recommended to run this command in a separate `pip` or `conda` environment to prevent dependency conflicts.
+
+## Installing from Github source code
+
+1. `cd` to git directory
+2. Enter the command `pip install -e ./`
 
 ## Building and Uploading the Package (For package maintainers):
 
@@ -24,8 +33,7 @@ See the example python notebook [Examples/L1C-example.ipynb](https://github.com/
 Here is a simple example of how to use the package:
 
 ```Python
-from nasa_pace_data_reader import L1    # Reader library
-from nasa_pace_data_reader import plot  # Plotting library
+from nasa_pace_data_reader import L1, plot    # library
 
 # Location of the file
 fileName = '/Users/aputhukkudy/Downloads/PACE_HARP2.20220321T101844.L1C.5.2KM.V03.SIM2.1_.nc'
@@ -104,8 +112,11 @@ plt_.projectVar('u',  viewAngle=-35)
 ---
 
 ## Change Log:
-
 ---
+### v0.0.3.19
+- Adjustments made to account for the accurate variable name in the L1C file.
+- Implemented the option to plot L1B (HARP2).
+
 ### v0.0.3.18
 - Masked the black pixels in the projected RGB
 

@@ -408,7 +408,8 @@ class Plot:
     
     def projectVar(self, var='i', viewAngleIdx=None, viewAngle= 0,
                    proj='PlateCarree', colorbar=True, varAlpha=1,
-                   stockImage=False, **kwargs):
+                   stockImage=False, level='L1C',idx_=1, saveFig=False,
+                   **kwargs):
         """ Project a single variable of the data to the earth projection using Cartopy.
         
         Args:
@@ -418,6 +419,9 @@ class Plot:
             colorbar (bool, optional): If True, the colorbar is added. Defaults to False.
             varAlpha (int, optional): The alpha value for the variable. Defaults to 1.
             stockImage (bool, optional): If True, the stock image is added. Defaults to False.
+            level (str, optional): The level of the data. Defaults to 'L1C'.
+            idx_ (int, optional): The index of the variable. Defaults to 1.
+            saveFig (bool, optional): If True, the figure is saved. Defaults to False.            
             **kwargs: Variable length argument list to pass to the plot function.
             
         Returns:
@@ -439,6 +443,11 @@ class Plot:
         # Get the latitude and longitude
         lat = self.data['latitude']
         lon = self.data['longitude']
+
+        if level.lower() == 'l1b':
+            lat = lat[viewAngleIdx, :, :]
+            lon = lon[viewAngleIdx, :, :]
+
 
         # center of the plot
         lon_center = (lon.max() + lon.min()) / 2
@@ -491,15 +500,23 @@ class Plot:
             kwargs['alpha'] = varAlpha
 
         # if reflectance is True, plot the reflectance
-        if self.reflectance and var in ['i', 'q', 'u']:
-            # πI/F0
-            data_ = self.data[var][:,:,viewAngleIdx,0]*np.pi/self.data['F0'][viewAngleIdx, 0]
-        else:
-            data_ = self.data[var][:,:,viewAngleIdx,0]
+        if level.lower() == 'l1b':
+            data_ = self.data[var][viewAngleIdx,:,:]
 
-        im = plt.contourf(lon, lat,
-                          data_, 60,
-                          transform=ccrs.PlateCarree(), **kwargs)
+            im = plt.contourf(lon, lat,
+                            data_, 60,
+                            transform=ccrs.PlateCarree(), **kwargs)
+
+        else:
+            if self.reflectance and var in ['i', 'q', 'u']:
+                # πI/F0
+                data_ = self.data[var][:,:,viewAngleIdx,0]*np.pi/self.data['F0'][viewAngleIdx, 0]
+            else:
+                data_ = self.data[var][:,:,viewAngleIdx,0]
+
+            im = plt.contourf(lon, lat,
+                            data_, 60,
+                            transform=ccrs.PlateCarree(), **kwargs)
         
         # select var and units
         var, unit_ = self.reflectanceChange(var) if self.reflectance else (var, self.data['_units'][var])
@@ -519,6 +536,11 @@ class Plot:
         # round the view angle to 2 decimal places
         ax.set_title(f'${var}{{({self.band})}}$ at {round(float(viewAngle), 2)}° viewing angle \nof the instrument {self.instrument}')
         plt.show()
+
+        if saveFig:
+            location = f'./{self.instrument}_viewAngle_{viewAngle}.png'
+            fig.savefig(location, dpi=self.plotDPI)
+            print(f'...Figure saved at {location}')
 
     def reflectanceChange(self, var):
         """Change the variable to reflectance if reflectance is True.
@@ -541,8 +563,9 @@ class Plot:
 
     # Plot projected RGB using Cartopy
     def projectedRGB(self, rgb=None, scale=1, ax=None,
-                     var='i', viewAngleIdx=[38, 4, 84],
+                     var='i', viewAngleIdx=[36, 4, 84],
                      normFactor=200, proj='PlateCarree',
+                     saveFig=False,
                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
@@ -627,6 +650,11 @@ class Plot:
 
         plt.box(on=None)
         plt.show()
+
+        if saveFig:
+            location = f'./{self.instrument}_RGB.png'
+            fig.savefig(location, dpi=self.plotDPI)
+            print(f'...Figure saved at {location}')
 
 
     def meshgridRGB(self, LON, LAT, proj_size=(905,400), return_mapdata=False):
