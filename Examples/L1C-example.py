@@ -1,7 +1,11 @@
 from nasa_pace_data_reader import L1, plot
 
+# suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 # Location of the file
-fileName = '/Users/aputhukkudy/Downloads/yaw180/PACE_HARP2.20240223T213922.L1C.nc'
+fileName = '/Users/aputhukkudy/Downloads/az180_r.7/PACE_HARP2.20240224T104106.L1C.nc'
 
 # Read the file
 l1c = L1.L1C()
@@ -10,11 +14,15 @@ l1c_dict = l1c.read(fileName)
 # Print the keys and the shape of the data
 l1c_dict.keys()
 for key in l1c_dict.keys():
-    if key != '_units':
-        print('{:<24}:{}'.format(key, l1c_dict[key].shape))
+    if key != '_units' and key != 'date_time':
+        try:
+            print('{:<24}:{}'.format(key, l1c_dict[key].shape))
+        except AttributeError:
+            print('Error reading the key: {}'.format(key))
+            
 
 # Define the pixel
-pixel = [190,200]
+pixel = [350,180]
 
 # Load the plot class (default instrument is HARP2)
 plt_ = plot.Plot(l1c_dict)
@@ -24,14 +32,16 @@ band = 'Blue'
 plt_.setBand(band)
 
 # plot RGB in default plate carree projection
-# plt_.projectedRGB()
+# plt_.plotRGB(normFactor=600, saveFig=True, dpi=300)
+
+plt_.projectedRGB(normFactor=600, saveFig=True, dpi=300)
 
 # plot RGB in with different view angle
 plt_.projectedRGB(var='i', viewAngleIdx=[31, 3, 83], normFactor=600, saveFig=True)
-plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
+# plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
 
 #%% plot RGB in Orthographic projection
-plt_.projectedRGB(proj='Orthographic')
+plt_.projectedRGB(proj='Orthographic', normFactor=600, saveFig=True, dpi=300)
 
 # plot one variable in a specific projection at closest viewing angle to nadir
 band = 'nIR'
@@ -73,4 +83,3 @@ plt_.bands2plot = ['NIR', 'blue']   # Order in the list is the order of plotting
 plt_.reflectance = False # switching back to radiance
 plt_.plotPixelVars(pixel[0], pixel[1], bands= plt_.bands2plot, xAxis= 'view_angles',
                    showUnit=False, alpha=0.5, linewidth=0.5) # you can pass any other arguments to the plot function
-

@@ -1,6 +1,10 @@
 from nasa_pace_data_reader import L1, plot
 from matplotlib import pyplot as plt
 
+# suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 # Location of the file
 fileName = '/Users/aputhukkudy/Downloads/yaw180/PACE_HARP2.20240223T213922.L1B.nc'
 

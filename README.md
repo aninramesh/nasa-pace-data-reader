@@ -113,6 +113,9 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+### v0.0.3.20
+- Added `Examples/auto-image-gen-harp2.py` to automate the L1C image plotting
+
 ### v0.0.3.19
 - Adjustments made to account for the accurate variable name in the L1C file.
 - Implemented the option to plot L1B (HARP2).

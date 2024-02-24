@@ -1,6 +1,6 @@
 import os
 from netCDF4 import Dataset
-
+import datetime
 
 
 class L1C:
@@ -89,6 +89,16 @@ class L1C:
                 self.obsNames = ['I']
                 self.wavelengthsStr = 'intensity_wavelengths'
 
+    def dateStr(self, filepath):
+        """Returns the date string."""
+        # Extract the filename from the filepath
+        filename_ = os.path.basename(filepath)
+
+        # Extract the date and time string from the filename
+        date_time_str = filename_.split('.')[1]
+
+        # Convert the date and time string to a datetime object
+        return datetime.datetime.strptime(date_time_str, '%Y%m%dT%H%M%S')
     
     def unit(self, var, units):
             """Returns the units for the variable."""
@@ -117,6 +127,9 @@ class L1C:
         data = {}
 
         try:
+
+            # get the date time from the filename
+            data['date_time'] = self.dateStr(filename)
 
             # Access the 'observation_data' & 'geolocation_data' group
             time_data = dataNC.groups['bin_attributes']

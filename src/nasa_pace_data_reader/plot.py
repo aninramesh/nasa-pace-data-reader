@@ -220,7 +220,7 @@ class Plot:
 
         # plot reflectance or radiance
         if self.instrument == 'HARP2':
-            if self.reflectance and dataVar.lower() in self.vars2plot:
+            if self.reflectance and dataVar.lower() in self.vars2plot and dataVar.lower() not in ['dolp']:
                 # πI/F0
                 dataVar_ = self.data[dataVar][x, y, self.bandAngles,
                                                     self.wavIndex]*np.pi/self.data['F0'][self.bandAngles, self.wavIndex]
@@ -360,7 +360,7 @@ class Plot:
 
     def plotRGB(self, var='i', viewAngleIdx=[38, 4, 84],
                  scale= 1, normFactor=200, returnRGB=False,
-                 plot=True, **kwargs):
+                 plot=True, rgb_dolp=False, **kwargs):
         """Plot the RGB image of the instrument.
 
         Args:
@@ -384,16 +384,28 @@ class Plot:
 
         # Create a 3D array to store the RGB data
         rgb = np.zeros((self.data[var].shape[0], self.data[var].shape[1], 3), dtype=np.float32)
-        rgb[:, :, 0] = self.data[var][:,:,idx[0],0]
-        rgb[:, :, 1] = self.data[var][:,:,idx[1],0]
-        rgb[:, :, 2] = self.data[var][:,:,idx[2],0]
+
+        if rgb_dolp:
+            rgb[:, :, 0] = self.data['i'][:,:,idx[0],0]*self.data[var][:,:,idx[0],0]
+            rgb[:, :, 1] = self.data['i'][:,:,idx[1],0]*self.data[var][:,:,idx[1],0]
+            rgb[:, :, 2] = self.data['i'][:,:,idx[2],0]*self.data[var][:,:,idx[2],0]
+        else:
+            rgb[:, :, 0] = self.data[var][:,:,idx[0],0]
+            rgb[:, :, 1] = self.data[var][:,:,idx[1],0]
+            rgb[:, :, 2] = self.data[var][:,:,idx[2],0]
 
         # if normFactor is scalar, divide the RGB by the scalar else divide in a loop
         if not isinstance(normFactor, int):
             for i in range(3):
-                rgb[:, :, i] = rgb[:, :, i]/normFactor[i]*scale
+                if isinstance(scale, int):
+                    rgb[:, :, i] = rgb[:, :, i]/normFactor[i]*scale
+    
         else:
-            rgb = rgb/normFactor*scale
+            if isinstance(scale, int):
+                rgb = rgb/normFactor*scale
+            else:
+                for i in range(3):
+                    rgb[:, :, i] = rgb[:, :, i]/normFactor*scale[i]
         # copy the rgb to a new variable
 
         # Plot the RGB image
@@ -409,6 +421,7 @@ class Plot:
     def projectVar(self, var='i', viewAngleIdx=None, viewAngle= 0,
                    proj='PlateCarree', colorbar=True, varAlpha=1,
                    stockImage=False, level='L1C',idx_=1, saveFig=False,
+                   lakes=True, rivers=False, figsize_=None, ax=None, dpi=300,
                    **kwargs):
         """ Project a single variable of the data to the earth projection using Cartopy.
         
@@ -448,7 +461,6 @@ class Plot:
             lat = lat[viewAngleIdx, :, :]
             lon = lon[viewAngleIdx, :, :]
 
-
         # center of the plot
         lon_center = (lon.max() + lon.min()) / 2
         lat_center = (lat.max() + lat.min()) / 2
@@ -472,9 +484,15 @@ class Plot:
                     figsize = value
 
         # Prepare figure and axes
-        fig = plt.figure(figsize=figsize)
+        figsize_ = figsize if figsize_ == None else figsize_
+        if ax is None:
+            fig = plt.figure(figsize=figsize_)
+        
         if proj == 'PlateCarree':
-            ax = plt.axes(projection=ccrs.PlateCarree())
+            if ax is None:
+                ax = plt.axes(projection=ccrs.PlateCarree())
+            else:
+                ax = ax
             # Set up gridlines and labels
             gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
                                 **kwargs)
@@ -494,6 +512,10 @@ class Plot:
         ax.set_global()
         ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
         ax.stock_img() if stockImage else ax.add_feature(cfeature.OCEAN, zorder=0) ; ax.add_feature(cfeature.LAND, zorder=0, edgecolor='black')
+        # Add coastline feature
+        ax.add_feature(cfeature.COASTLINE, edgecolor='black', linewidth=1, alpha=0.5)
+        ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=1, alpha=0.5) if lakes else None
+        ax.add_feature(cfeature.RIVERS, edgecolor='black', linewidth=1, alpha=0.5) if rivers else None
         
         # plot the data with alpha value
         if varAlpha:
@@ -562,10 +584,11 @@ class Plot:
 
 
     # Plot projected RGB using Cartopy
-    def projectedRGB(self, rgb=None, scale=1, ax=None,
+    def projectedRGB(self, rgb=None, scale=1, ax=None, fig=None,
                      var='i', viewAngleIdx=[36, 4, 84],
                      normFactor=200, proj='PlateCarree',
-                     saveFig=False,
+                     saveFig=False, noShow=False, rivers=False, lakes=True,
+                     rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
@@ -585,7 +608,7 @@ class Plot:
 
         # if RGB does not exist, run the plotRGB method
         if rgb is None:
-            self.plotRGB(var=var, viewAngleIdx=viewAngleIdx, scale=scale, normFactor=normFactor, returnRGB=True, plot=False,
+            self.plotRGB(var=var, viewAngleIdx=viewAngleIdx, scale=scale, normFactor=normFactor, returnRGB=True, plot=False, rgb_dolp=rgb_dolp,
                                **kwargs)
 
         # Check the shape of the RGB data
@@ -595,9 +618,7 @@ class Plot:
         lat = self.data['latitude']
         lon = self.data['longitude']
 
-        # Prepare figure and axes
-        if ax is None:
-            fig = plt.figure(figsize=(4, 5))
+        proj_size=(1800,800) if proj == 'PlateCarree' else (3600,1600)
 
         rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False) #Created projection image
         
@@ -608,10 +629,24 @@ class Plot:
         # Create a border of the images        
         rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
 
+        # Prepare figure and axes
+        if ax is None:
+            print('...Creating a new figure')
+            if figsize is None:
+                fig = plt.figure(figsize=(4, 5), dpi=self.plotDPI)
+                # print('...Setting the figure size to (4, 5)')
+            else:
+                fig = plt.figure(figsize=fig, dpi=self.plotDPI)
+                # print(f'...Setting the figure size to {figsize}')
+
         # Check the projection type
         if proj == 'Orthographic':
             # Create an Orthographic projection
-            ax = plt.axes(projection=ccrs.Orthographic(lon_center, lat_center))
+            if ax is None:
+                ax = plt.axes(projection=ccrs.Orthographic(lon_center, lat_center))
+            else:
+                ax = ax
+
             ax.stock_img()
             ax.set_global()
 
@@ -619,11 +654,15 @@ class Plot:
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
 
             # Display the image in the projection
-            ax.imshow(rgb_new, origin='lower', vmin=0, vmax=0.5, extent=rgb_extent, transform=ccrs.PlateCarree())
+            ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
 
         elif proj == 'PlateCarree':
             # Create a PlateCarree projection
-            ax = plt.axes(projection=ccrs.PlateCarree())
+            if ax is None:
+                ax = plt.axes(projection=ccrs.PlateCarree())
+            else: 
+                # print('...Using the existing axes')
+                ax=ax
             # Set up gridlines and labels
             gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='white', alpha=0.2, linestyle='--')
             gl.xlabels_top = False
@@ -636,9 +675,11 @@ class Plot:
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
             
             # Display the image in the projection
-            ax.imshow(rgb_new, origin='lower', vmin=0, vmax=0.5, extent=rgb_extent)
+            ax.imshow(rgb_new, origin='lower', extent=rgb_extent, **kwargs)
             # Add coastline feature
-            ax.add_feature(cfeature.COASTLINE, edgecolor='black')
+            ax.add_feature(cfeature.COASTLINE, edgecolor='black', linewidth=1, alpha=0.5)
+            ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=1, alpha=0.5) if lakes else None
+            ax.add_feature(cfeature.RIVERS, edgecolor='black', linewidth=1, alpha=0.5) if rivers else None
 
         else:
             # Handle invalid projection type
@@ -648,16 +689,22 @@ class Plot:
         ax.set_xmargin(0.05)
         ax.set_ymargin(0.05)
 
+        if setTitle:
+            # set the title using the date_time
+            ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}')
+
         plt.box(on=None)
-        plt.show()
+        plt.show() if not noShow else None
 
         if saveFig:
-            location = f'./{self.instrument}_RGB.png'
+            location = f'./{self.instrument}_RGB_{str(viewAngleIdx[0])}_proj_{proj}.png'
+            if savePath is not None:
+                location = savePath
             fig.savefig(location, dpi=self.plotDPI)
             print(f'...Figure saved at {location}')
 
 
-    def meshgridRGB(self, LON, LAT, proj_size=(905,400), return_mapdata=False):
+    def meshgridRGB(self, LON, LAT, proj_size=(1800,800), return_mapdata=False):
         """Project the RGB data using meshgrid.
 
         This function takes longitude and latitude data along with optional parameters and returns the projected RGB data.
