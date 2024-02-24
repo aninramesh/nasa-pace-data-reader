@@ -64,6 +64,13 @@ class L1C:
                 self.obsNames = ['i', 'q', 'u', 'dolp']
                 self.wavelengthsStr = 'intensity_wavelength'
 
+            case 'gapmap':
+                self.instrument = 'GAPMAP'
+                self.geoNames = ['scattering_angle', 'solar_zenith', 
+                                'solar_azimuth', 'sensor_zenith', 'sensor_azimuth',
+                                'height']
+                self.obsNames = [ 'latitude', 'longitude',  'I', 'Q_over_I', 'U_over_I', 'DOLP']
+
             case 'spexone':
                 self.instrument = 'SPEXone'
                 self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith', 
@@ -204,4 +211,53 @@ class L1B:
             # close the netCDF file
             dataNC.close()
 
+class L1beta:
+    """Class for reading
+        NASA PACE Level 1beta data files.
+        
+    """
 
+    def __init__(self):
+        """Initializes the class."""
+        self.instrument = 'GAPMAP'   # Default instrument
+        self.product = 'L1beta'        # Default product
+        
+
+    def read(self, filename):
+        """Reads the data from the file."""
+        print(f'Reading {self.instrument} data from {filename}')
+
+        dataNC = Dataset(filename, 'r')
+
+        # define the groups
+        img_data = dataNC.groups['IMAGE_DATA']
+        nav_data = dataNC.groups['NAVIGATION']
+
+        # define the variables
+        img_data_vars = ['image_0', 'image_45', 'image_90', 'image_135', 'Latitude', 'Longitude', 'Surface_Altitude']
+        nav_data_vars = ['JD', 'Date', 'Time']
+
+        # define output dict
+        data = {}
+
+        try:
+
+            # load the variables from the group img_data
+            for key_ in img_data_vars:
+                data[key_] = img_data.variables[key_][:]
+            
+            for key_ in nav_data_vars:
+                data[key_] = nav_data.variables[key_][:]
+
+            # close the netCDF file
+            dataNC.close()
+
+        except KeyError:
+            print(f'Error: {filename} does not contain the required variables.')
+    
+            # close the netCDF file
+            dataNC.close()
+    
+        # return the data
+        return data
+        
