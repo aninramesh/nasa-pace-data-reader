@@ -50,7 +50,7 @@ class Plot:
                     'xtick.top': 'True',
                     'mathtext.fontset': 'cm',
                     'figure.dpi': self.plotDPI,
-                    'font.family': 'sans-serif',
+                    'font.family': 'Tahoma',
                     'font.sans-serif': ['Tahoma'],
                     'axes.unicode_minus': False
         })

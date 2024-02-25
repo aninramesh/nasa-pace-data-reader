@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Python script to generate HARP2 RGB Images
 
 # Load the required libraries
@@ -113,6 +114,7 @@ if __name__ == "__main__":
                                       os.path.basename(args.l1c_file).replace('.nc', '_quicklook.png'))
     if Path(args.save_path).is_dir():
         assert os.path.exists(args.save_path), 'save_path does not exist!'
+        args.save_path = os.path.join(args.save_path, os.path.basename(args.l1c_file).replace('.nc', '_quicklook.png'))
     else:
         if os.path.dirname(args.save_path)!='':
             assert os.path.exists(os.path.dirname(args.save_path)), 'save_path does not exist!'
@@ -127,3 +129,4 @@ if __name__ == "__main__":
             
     # run the main program
     sys.exit(plotL1C(args))
+
