@@ -589,6 +589,7 @@ class Plot:
                      normFactor=200, proj='PlateCarree',
                      saveFig=False, noShow=False, rivers=False, lakes=True,
                      rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
+                     returnRGB=False,
                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
@@ -633,10 +634,13 @@ class Plot:
         if ax is None:
             print('...Creating a new figure')
             if figsize is None:
-                fig = plt.figure(figsize=(4, 5), dpi=self.plotDPI)
+                fig = plt.figure(figsize=(4, 5), dpi=self.plotDPI) if fig is None else fig
                 # print('...Setting the figure size to (4, 5)')
             else:
-                fig = plt.figure(figsize=fig, dpi=self.plotDPI)
+                if fig is None:
+                    fig = plt.figure(figsize=figsize, dpi=self.plotDPI)
+                else:
+                    fig = fig
                 # print(f'...Setting the figure size to {figsize}')
 
         # Check the projection type
@@ -702,6 +706,10 @@ class Plot:
                 location = savePath
             fig.savefig(location, dpi=self.plotDPI)
             print(f'...Figure saved at {location}')
+
+        # return the figure and axes and the projected RGB
+        if returnRGB:
+            return fig, ax, rgb_new, rgb_extent
 
 
     def meshgridRGB(self, LON, LAT, proj_size=(1800,800), return_mapdata=False):

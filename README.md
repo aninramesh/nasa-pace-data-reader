@@ -113,6 +113,10 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+
+### v0.0.3.22
+- Added a script to plot the RGB movie
+
 ### v0.0.3.20
 - Added `Examples/auto-image-gen-harp2.py` to automate the L1C image plotting
 

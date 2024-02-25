@@ -47,13 +47,13 @@ def plotL1C(args):
     ax3 = fig_.add_subplot(223, projection=ccrs.PlateCarree())
     plt_.projectedRGB(var='dolp', viewAngleIdx=[31, 3, 83], normFactor=50,
                        scale=[0.8, 1, 1], ax=ax3, rgb_dolp=True, noShow=True, setTitle=False)
-    ax3.set_title('DOLP\n(R=670 nm, G=550 nm, B=440 nm)')
+    ax3.set_title('Polarized Radiance\n(R=670 nm, G=550 nm, B=440 nm)')
 
     # plot one variable in a specific projection at closest viewing angle to nadir
     ax4 = fig_.add_subplot(224, projection=ccrs.PlateCarree())
     plt_.projectedRGB(var='dolp', normFactor=50, scale=[0.8, 1, 1], ax=ax4,
                        rgb_dolp=True, noShow=True, setTitle=False)
-    ax4.set_title('DOLP\n(R=670 nm, G=870 nm, B=440 nm)')
+    ax4.set_title('Polarized Radiance\n(R=670 nm, G=870 nm, B=440 nm)')
 
     fig_.suptitle(f'HARP2 L1C Quicklook\n {l1c_dict["date_time"]} UTC')
     try:

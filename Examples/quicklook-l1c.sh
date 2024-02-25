@@ -4,7 +4,7 @@
 # Example: ./quicklook-l1c.sh --target-dir /path/to/target/directory1 /path/to/target/directory2
 
 # autogenerate quicklooks for all *L1C.nc files in the target directory
-autogenPy=auto-image-gen-harp2.py
+autogenPy=/data/archive/ESI/HARP2/Software/quicklook/auto-image-gen-harp2.py
 
 # Parse the command line arguments
 while [[ $# -gt 0 ]]; do
