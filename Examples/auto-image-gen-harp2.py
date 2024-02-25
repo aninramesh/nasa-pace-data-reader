@@ -129,4 +129,3 @@ if __name__ == "__main__":
             
     # run the main program
     sys.exit(plotL1C(args))
-
