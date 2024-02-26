@@ -164,7 +164,7 @@ else:
 
 # Make a movie from the images
 # movie directory
-movie_dir = f'{l1c_dir}/movie_{str(args_.viewIndex)}'
+movie_dir = f'{l1c_dir}/movie_{str(args_.viewIndex)}' +'_vIdx_'+str(args_.viewIndex)
 args.movie_dir = movie_dir
 os.makedirs(movie_dir, exist_ok=True)
 
