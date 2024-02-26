@@ -46,7 +46,10 @@ l1c_dict = l1c.read(fileName)
 l1c_dict.keys()
 for key in l1c_dict.keys():
     if key != '_units':
-        print('{:<24}:{}'.format(key, l1c_dict[key].shape))
+        try:
+            print('{:<24}:{}'.format(key, l1c_dict[key].shape))
+        except:
+            print('Key error')
 
 # Define the pixel
 pixel = [250,300]
@@ -113,6 +116,9 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+
+### v0.0.3.23
+- Multiple projection in the RGB movie
 
 ### v0.0.3.22
 - Added a script to plot the RGB movie

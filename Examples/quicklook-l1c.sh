@@ -71,11 +71,16 @@ files=$(find "$target_dir" -name "*L1C.nc")
 # Loop through each file
 for file in $files; do
 
-    # if file has already been processed, skip it
-    if [ -f "$dest_dir/$(basename $file)_quicklook.png" ]; then
+    # if file has already been processed, skip it (replace file(".nc") with file("_quicklook.png") to check if quick look exists)
+    nfile=$(basename $file)
+    nfile="${nfile%.*}"
+    if [ -f "$dest_dir/$nfile""_quicklook.png" ]; then
         echo "Quick look already exists: $file"
         continue
     else
+        echo "---------------------------------------------"
+        echo "$dest_dir/$nfile""_quicklook.png"
+        echo "---------------------------------------------"
         echo "Creating quick look: $file"
         echo "Running: python $autogenPy --l1c_file $file --save_path $dest_dir"
         python $autogenPy --l1c_file $file --save_path $dest_dir 

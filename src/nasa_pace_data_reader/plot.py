@@ -50,9 +50,9 @@ class Plot:
                     'xtick.top': 'True',
                     'mathtext.fontset': 'cm',
                     'figure.dpi': self.plotDPI,
-                    'font.family': 'Tahoma',
-                    'font.sans-serif': ['Tahoma'],
-                    'axes.unicode_minus': False
+                    'font.family': 'cmr10',
+                    'font.sans-serif': ['cmr10'],
+                    'axes.unicode_minus': False,
         })
 
 
@@ -589,7 +589,7 @@ class Plot:
                      normFactor=200, proj='PlateCarree',
                      saveFig=False, noShow=False, rivers=False, lakes=True,
                      rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
-                     returnRGB=False,
+                     returnRGB=False, lon_0=None, lat_0=None,
                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
@@ -624,8 +624,9 @@ class Plot:
         rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False) #Created projection image
         
         # Plotting in the axes
-        lon_center = (lon.max() + lon.min()) / 2
-        lat_center = (lat.max() + lat.min()) / 2
+        lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
+        lat_center = (lat.max() + lat.min()) / 2 if lat_0 is None else lat_0
+        print(f'...Centering the projection at {lon_center}, {lat_center}')
 
         # Create a border of the images        
         rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
