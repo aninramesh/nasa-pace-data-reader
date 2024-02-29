@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Downloads/az180_r.7/PACE_HARP2.20240224T104106.L1C.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE_HARP2.20240225T075433.L1C.nc'
 
 # Read the file
 l1c = L1.L1C()
@@ -22,7 +22,7 @@ for key in l1c_dict.keys():
             
 
 # Define the pixel
-pixel = [350,180]
+pixel = [100,200]
 
 # Load the plot class (default instrument is HARP2)
 plt_ = plot.Plot(l1c_dict)
@@ -32,16 +32,16 @@ band = 'Blue'
 plt_.setBand(band)
 
 # plot RGB in default plate carree projection
-# plt_.plotRGB(normFactor=600, saveFig=True, dpi=300)
+plt_.plotRGB(normFactor=300, saveFig=True, dpi=300)
 
-plt_.projectedRGB(normFactor=600, saveFig=True, dpi=300)
+plt_.projectedRGB(normFactor=300, saveFig=True, dpi=300)
 
 # plot RGB in with different view angle
-plt_.projectedRGB(var='i', viewAngleIdx=[31, 3, 83], normFactor=600, saveFig=True)
+plt_.projectedRGB(var='i', viewAngleIdx=[31, 3, 83], normFactor=300, saveFig=True)
 # plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
 
 #%% plot RGB in Orthographic projection
-plt_.projectedRGB(proj='Orthographic', normFactor=600, saveFig=True, dpi=300)
+plt_.projectedRGB(proj='Orthographic', normFactor=300, saveFig=True, dpi=300)
 
 # plot one variable in a specific projection at closest viewing angle to nadir
 band = 'nIR'
@@ -74,12 +74,15 @@ plt_.setInstrument()
 # plot all vars and bands
 plt_.plotPixelVars(pixel[0], pixel[1], xAxis='view_angles')
 
+plt_.reflectance = False # switching back to radiance
+plt_.plotPixelVars(pixel[0], pixel[1], xAxis='scattering_angle')
 
 # plot only specific bands and vars
 plt_.vars2plot = ['i',  'u']    # Order in the list is the order of plotting
 plt_.bands2plot = ['NIR', 'blue']   # Order in the list is the order of plotting
 
 # plot radiance
-plt_.reflectance = False # switching back to radiance
 plt_.plotPixelVars(pixel[0], pixel[1], bands= plt_.bands2plot, xAxis= 'view_angles',
+                   showUnit=False, alpha=0.5, linewidth=0.5) # you can pass any other arguments to the plot function
+plt_.plotPixelVars(pixel[0], pixel[1], bands= plt_.bands2plot, xAxis= 'scattering_angle',
                    showUnit=False, alpha=0.5, linewidth=0.5) # you can pass any other arguments to the plot function

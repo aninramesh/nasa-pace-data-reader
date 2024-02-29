@@ -63,6 +63,8 @@ class L1C:
                 
                 self.obsNames = ['i', 'q', 'u', 'dolp']
                 self.wavelengthsStr = 'intensity_wavelength'
+                self.F0Str = 'intensity_f0'
+                self.VAStr = 'sensor_view_angle'
 
             case 'gapmap':
                 self.instrument = 'GAPMAP'
@@ -70,6 +72,8 @@ class L1C:
                                 'solar_azimuth', 'sensor_zenith', 'sensor_azimuth',
                                 'height']
                 self.obsNames = [ 'latitude', 'longitude',  'I', 'Q_over_I', 'U_over_I', 'DOLP']
+                self.F0Str = 'intensity_f0'
+                self.VAStr = 'sensor_view_angle'
 
             case 'spexone':
                 self.instrument = 'SPEXone'
@@ -77,8 +81,11 @@ class L1C:
                                 'solar_azimuth', 'sensor_zenith', 'sensor_azimuth',
                                 'height']
                 
+                
                 self.obsNames = ['I', 'Q_over_I', 'U_over_I', 'DOLP']
-                self.wavelengthsStr = 'intensity_wavelengths'
+                self.wavelengthsStr = 'intensity_wavelength'
+                self.F0Str = 'intensity_f0'
+                self.VAStr = 'sensor_view_angle'
 
             case 'oci':
                 self.instrument = 'OCI'
@@ -86,8 +93,10 @@ class L1C:
                                 'solar_azimuth', 'sensor_zenith', 'sensor_azimuth',
                                 'height']
                 
-                self.obsNames = ['I']
-                self.wavelengthsStr = 'intensity_wavelengths'
+                self.obsNames = ['i']
+                self.wavelengthsStr = 'intensity_wavelength'
+                self.F0Str = 'intensity_F0'
+                self.VAStr = 'view_angles'
 
     def dateStr(self, filepath):
         """Returns the date string."""
@@ -159,12 +168,12 @@ class L1C:
                 self.unit(var, obs_data.variables[var].units)
 
             # read the F0 and unit
-            data['F0'] = sensor_data.variables['intensity_f0'][:]
-            data['_units']['F0'] = sensor_data.variables['intensity_f0'].units
+            data['F0'] = sensor_data.variables[self.F0Str][:]
+            data['_units']['F0'] = sensor_data.variables[self.F0Str].units
             self.unit(var, obs_data.variables[var].units)
 
             # read the band angles and wavelengths
-            data['view_angles'] = sensor_data.variables['sensor_view_angle'][:]
+            data['view_angles'] = sensor_data.variables[self.VAStr][:]
             data['intensity_wavelength'] = sensor_data.variables[self.wavelengthsStr][:]
 
             # FIXME: Polarization based F0 might be needed for SPEXone, since their spectral response is polarization dependent

@@ -122,7 +122,7 @@ parser.add_argument('--l1c_dir', type=str, required=True, help='L1C dir to proce
 parser.add_argument('--dpi', type=int, required=False, default=200, help='DPI of the saved figure')
 parser.add_argument('--movie-only', type=bool, required=False, default=False, help='Create movie only')
 parser.add_argument('--normFactor', type=int, required=False, default=300, help='Normalization factor for the RGB image')
-parser.add_argument('--viewIndex', type=int, required=False, default=0, help='Viewing angle for the RGB image option: 0 = -8, 1 = -43, 2 = ~54')
+parser.add_argument('--viewIndex', type=int, required=False, default=0, help='Viewing angle for the RGB image option: 0 = -8, 1 = -43, 2 = ~54, 3 = ~22')
 parser.add_argument('--fixed_lat', type=int, required=False, default=0, help='Fixed latitude for the orthographic projection')
 
 args_ = parser.parse_args()

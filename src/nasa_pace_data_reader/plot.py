@@ -50,8 +50,8 @@ class Plot:
                     'xtick.top': 'True',
                     'mathtext.fontset': 'cm',
                     'figure.dpi': self.plotDPI,
-                    'font.family': 'cmr10',
-                    'font.sans-serif': ['cmr10'],
+                    'font.family': 'serif',
+                    'font.serif': ['DejaVu Serif'],
                     'axes.unicode_minus': False,
         })
 
@@ -158,7 +158,7 @@ class Plot:
 
 
     def plotPixel(self, x, y, dataVar='i', xAxis=None, xlim=None, ylim=None,
-                  axis=None, axisLabel=True, returnHandle=False,
+                  axis=None, axisLabel=True, returnHandle=False, title=True,
                     **kwargs):
         """Plot the data for a pixel.
 
@@ -182,7 +182,7 @@ class Plot:
         if axisLabel:
             plt.xlabel(xAxis)
             plt.ylabel(f'{dataVar}\n{unit_}') if unit_ else plt.ylabel(r'R$_%s$' %dataVar)
-            plt.title(f'Pixel ({x}, {y}) of the instrument {self.instrument}')
+            
 
         # if oci, plot linear+log  in x axis
         if self.instrument == 'OCI' and xAxis == 'intensity_wavelength':
@@ -194,6 +194,10 @@ class Plot:
         if ylim:
             ax_.set_ylim(ylim)
             ax_.set_ylim((ylim[0], ylim[1]))
+
+        if title:
+            titleStr = f'{self.data["date_time"]} \nPixel ({x}, {y}) of the instrument {self.instrument}'
+            plt.title(titleStr)
 
         plt.show()
 
