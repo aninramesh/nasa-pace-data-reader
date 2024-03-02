@@ -24,6 +24,8 @@ class Plot:
 
         elif instrument.lower() == 'spexone':
             self.instrument = 'SPEXone'
+            self.wavIndex = range(0, self.data['intensity_wavelength'].shape[1], 40)
+            self.wavIndexDolp = range(0, self.data['dolp'].shape[1], 5)
 
         elif instrument.lower() == 'oci':
             self.instrument = 'OCI'
@@ -38,7 +40,7 @@ class Plot:
         self.setPlotStyle()
 
 
-    def setPlotStyle(self):
+    def setPlotStyle(self,font=None):
         """Set the plot style for the plot.
         Args:
             None
@@ -50,10 +52,11 @@ class Plot:
                     'xtick.top': 'True',
                     'mathtext.fontset': 'cm',
                     'figure.dpi': self.plotDPI,
-                    'font.family': 'serif',
-                    'font.serif': ['DejaVu Serif'],
                     'axes.unicode_minus': False,
         })
+
+        if font:
+            plt.rcParams.update({'font.family':font})
 
 
     def setBandAngles(self, band=None):
@@ -100,6 +103,8 @@ class Plot:
             elif self.band == 'all':
                 self.wavIndex = range(0, self.data['intensity_wavelength'].shape[1])
             # self.setBandAngles(band=self.band)
+        elif self.instrument == 'SPEXone':
+            self.wavIndex = range(0, self.data['intensity_wavelength'].shape[1], 20)
         else:
             self.wavIndex = 0
 
@@ -145,14 +150,14 @@ class Plot:
             self.allBandAngles = [self.setBandAngles(band) for band in self.bands]
 
             # variable to plot
-            self.vars2plot = ['I', 'Q_over_I', 'U_over_I', 'DOLP']
+            self.vars2plot = ['i','q', 'u', 'q_over_i', 'u_over_i', 'dolp']
 
         elif self.instrument == 'OCI':
             self.bands = ['all']
             # self.allBandAngles = [self.setBandAngles(band) for band in self.bands]
 
             # variable to plot
-            self.vars2plot = ['I']
+            self.vars2plot = ['i']
 
         print(f'Instrument set to {self.instrument}')
 
@@ -177,12 +182,16 @@ class Plot:
         xData_, dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis=xAxis)
 
         # Plot the data
-        fig_, ax_ = plt.subplots(figsize=(3, 2)) if axis == None else (None, axis)
+        fig_, ax_ = plt.subplots(figsize=(6, 4)) if axis == None else (None, axis)
         ax_.plot(xData_, dataVar_, **kwargs)
         if axisLabel:
             plt.xlabel(xAxis)
-            plt.ylabel(f'{dataVar}\n{unit_}') if unit_ else plt.ylabel(r'R$_%s$' %dataVar)
-            
+            if unit_:
+                plt.ylabel(f'{dataVar}\n{unit_}')
+            elif dataVar != 'dolp':
+                plt.ylabel(r'R$_{%s}$' % dataVar)
+            elif dataVar == 'dolp':
+                plt.ylabel(dataVar)
 
         # if oci, plot linear+log  in x axis
         if self.instrument == 'OCI' and xAxis == 'intensity_wavelength':
@@ -248,6 +257,20 @@ class Plot:
                     if not np.all(np.ma.getmask(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])):
                         dataVar_ = self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex]
                         continue
+                # check any valid data found
+                if not 'dataVar_' in locals():
+                    print(f'...No valid data found for the variable {dataVar} at the pixel ({x}, {y})')
+                    # end the script
+                    return None, None, None
+                unit_ = '('+self.data['_units'][dataVar]+')' if not dataVar == 'dolp' else ''
+        elif self.instrument == 'SPEXone':
+            waveIndex = self.wavIndex if dataVar in ['i'] else self.wavIndexDolp
+            if self.reflectance and dataVar in self.vars2plot and dataVar.lower() not in ['dolp']:
+                # πI/F0
+                dataVar_ = self.data[dataVar][x, y, :, waveIndex].T*np.pi/self.data['F0'][:, waveIndex]
+                unit_= ''
+            else:
+                dataVar_ = self.data[dataVar][x, y, :, waveIndex].T
                 unit_ = '('+self.data['_units'][dataVar]+')' if not dataVar == 'dolp' else ''
         
         # for the scattering angle
@@ -384,19 +407,43 @@ class Plot:
         idx = viewAngleIdx
 
         # Check the number of indices
-        assert len(idx) == 3, 'Invalid number of indices'
+        if self.instrument == 'HARP2':
+            assert len(idx) == 3, 'Invalid number of indices' 
+        elif self.instrument == 'OCI':
+            if not len(idx) == 3:
+                assert len(idx) == 1, 'Invalid number of indices'
+            else:
+                if np.nanmean(self.data['latitude']) > 0:
+                    viewAngleIdx = [1]
+                else:
+                    viewAngleIdx = [0]
+                assert len(viewAngleIdx) == 1, 'Invalid number of indices'
 
         # Create a 3D array to store the RGB data
-        rgb = np.zeros((self.data[var].shape[0], self.data[var].shape[1], 3), dtype=np.float32)
+        rgb = np.zeros((self.data[var].shape[0], self.data[var].shape[1], 3), dtype=np.float16)
 
-        if rgb_dolp:
-            rgb[:, :, 0] = self.data['i'][:,:,idx[0],0]*self.data[var][:,:,idx[0],0]
-            rgb[:, :, 1] = self.data['i'][:,:,idx[1],0]*self.data[var][:,:,idx[1],0]
-            rgb[:, :, 2] = self.data['i'][:,:,idx[2],0]*self.data[var][:,:,idx[2],0]
-        else:
-            rgb[:, :, 0] = self.data[var][:,:,idx[0],0]
-            rgb[:, :, 1] = self.data[var][:,:,idx[1],0]
-            rgb[:, :, 2] = self.data[var][:,:,idx[2],0]
+        # if the instrument is HARP2
+        if self.instrument == 'HARP2':
+            if rgb_dolp:
+                rgb[:, :, 0] = self.data['i'][:,:,idx[0],0]*self.data[var][:,:,idx[0],0]
+                rgb[:, :, 1] = self.data['i'][:,:,idx[1],0]*self.data[var][:,:,idx[1],0]
+                rgb[:, :, 2] = self.data['i'][:,:,idx[2],0]*self.data[var][:,:,idx[2],0]
+            else:
+                rgb[:, :, 0] = self.data[var][:,:,idx[0],0]
+                rgb[:, :, 1] = self.data[var][:,:,idx[1],0]
+                rgb[:, :, 2] = self.data[var][:,:,idx[2],0]
+        elif self.instrument == 'OCI':
+            # for the case of OCI, the variable is the intensity
+
+            # find wavelength index close tor R, G, B
+            #self.data['intensity_wavelength']-440
+            idxB = np.argmin(np.abs(self.data['intensity_wavelength']-440))
+            idxG = np.argmin(np.abs(self.data['intensity_wavelength']-550))
+            idxR = np.argmin(np.abs(self.data['intensity_wavelength']-650))
+            
+            rgb[:, :, 0] = self.data[var][:,:,viewAngleIdx[0],idxR]
+            rgb[:, :, 1] = self.data[var][:,:,viewAngleIdx[0],idxG]
+            rgb[:, :, 2] = self.data[var][:,:,viewAngleIdx[0],idxB]
 
         # if normFactor is scalar, divide the RGB by the scalar else divide in a loop
         if not isinstance(normFactor, int):
@@ -593,7 +640,7 @@ class Plot:
                      normFactor=200, proj='PlateCarree',
                      saveFig=False, noShow=False, rivers=False, lakes=True,
                      rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
-                     returnRGB=False, lon_0=None, lat_0=None,
+                     returnRGB=False, lon_0=None, lat_0=None, black_background=True,
                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
@@ -610,6 +657,12 @@ class Plot:
         Returns:
             None
         """
+        if self.instrument == 'OCI':
+            if np.nanmean(self.data['latitude']) > 0:
+                viewAngleIdx = [1]
+            else:
+                viewAngleIdx = [0]
+            assert len(viewAngleIdx) == 1, 'Invalid number of indices'
 
         # if RGB does not exist, run the plotRGB method
         if rgb is None:
@@ -623,7 +676,7 @@ class Plot:
         lat = self.data['latitude']
         lon = self.data['longitude']
 
-        proj_size=(1800,800) if proj == 'PlateCarree' else (3600,1600)
+        proj_size=(1800,800) if proj == 'PlateCarree' else (1800,800)
 
         rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False) #Created projection image
         
@@ -658,6 +711,11 @@ class Plot:
 
             ax.stock_img()
             ax.set_global()
+
+            if black_background:
+                # Set the background color to black
+                fig.patch.set_facecolor('black')
+                # set the font color to white
 
             # mask the black pane
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
@@ -700,7 +758,9 @@ class Plot:
 
         if setTitle:
             # set the title using the date_time
-            ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}')
+            fontColor = 'tan' if black_background else 'black'
+            ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
+            
 
         plt.box(on=None)
         plt.show() if not noShow else None
@@ -717,7 +777,7 @@ class Plot:
             return fig, ax, rgb_new, rgb_extent
 
 
-    def meshgridRGB(self, LON, LAT, proj_size=(1800,800), return_mapdata=False):
+    def meshgridRGB(self, LON, LAT, proj_size=(900,400), return_mapdata=False):
         """Project the RGB data using meshgrid.
 
         This function takes longitude and latitude data along with optional parameters and returns the projected RGB data.

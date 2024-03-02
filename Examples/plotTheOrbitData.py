@@ -4,10 +4,11 @@
 
 # Load the required libraries
 from nasa_pace_data_reader import L1, plot
-import argparse
 from datetime import datetime
-import os,sys
+import os,sys, pickle, argparse, gc
 from pathlib import Path
+
+# plot libraries
 from matplotlib import pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -46,14 +47,16 @@ def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
 
         # plot RGB in Orthographic projection
         fig2, ax2, rgb_['rgb_new'][l1c_file], rgb_['rgb_extent'][l1c_file]= plt_.projectedRGB(proj='Orthographic', viewAngleIdx=viewIndex,
-                                                                                        normFactor=600, saveFig=True, returnRGB=True,
+                                                                                        normFactor=args.normFactor, saveFig=True, returnRGB=True,
                                                                                         figsize=(8, 8), noShow=True, savePath=args.save_path,
                                                                                         lat_0=lat_0)
         
+        gc.collect()
         if temp_num > 0:
             # plot the orbit with previous L1C files
             for key in rgb_['rgb_new']:
                 ax2.imshow(rgb_['rgb_new'][key], origin='lower', extent=rgb_['rgb_extent'][key], transform=ccrs.PlateCarree())
+                gc.collect()
             fig2.savefig(str(args.save_path).replace('.png', '_seq.png'), dpi=args.dpi)
         else:
             fig2.savefig(str(args.save_path).replace('.png', '_seq.png'), dpi=args.dpi)
@@ -64,7 +67,7 @@ def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
         if "NetCDF: HDF error" in str(e):
             print(f'Error: {args.l1c_file} has netCDF error')
             print('---'*10)
-            os.system('rm -f {args.l1c_file}')
+            os.system(f'rm -f {args.l1c_file}')
             print(f'Error: {args.l1c_file} has been removed')
             print('---'*10)
         return None
@@ -169,20 +172,27 @@ args.movie_dir = movie_dir
 os.makedirs(movie_dir, exist_ok=True)
 
 # Define the figure handle
-fig = plt.figure(dpi=args.dpi, figsize=(8, 8))
+fig = plt.figure(dpi=args.dpi, figsize=(6, 6))
 
 temp_num = 0
 
 # Loop through the L1C files
 if not bool(args_.movie_only):
     for l1c_file in l1c_files:
-        
         args.l1c_file = str(l1c_file)
         args.save_path = l1c_file.with_suffix('.png')
         print('Projecting RGB for:', args.l1c_file)
         ax_new = plotL1C(args, fig, rgb_, temp_num=temp_num, viewIndex=viewIndex)
         temp_num += 1
 #--------------------------------------------------------------#
+# Save the RGB_ dict
+#--------------------------------------------------------------#
+
+with open(f'{movie_dir}/rgb_dict.pkl', 'wb') as f:
+    pickle.dump(rgb_, f)
+    print(f'RGB dict saved in {movie_dir}/rgb_dict.pkl')
+
+gc.collect()
     
 try:
     makeMovieFromImages(movie_dir=movie_dir,  movie_name='FullOrbit')

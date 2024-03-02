@@ -77,12 +77,12 @@ class L1C:
 
             case 'spexone':
                 self.instrument = 'SPEXone'
-                self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith', 
-                                'solar_azimuth', 'sensor_zenith', 'sensor_azimuth',
+                self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith_angle', 
+                                'solar_azimuth_angle', 'sensor_zenith_angle', 'sensor_azimuth_angle',
                                 'height']
                 
                 
-                self.obsNames = ['I', 'Q_over_I', 'U_over_I', 'DOLP']
+                self.obsNames = ['i', 'q', 'u', 'q_over_i', 'u_over_i', 'dolp']
                 self.wavelengthsStr = 'intensity_wavelength'
                 self.F0Str = 'intensity_f0'
                 self.VAStr = 'sensor_view_angle'
