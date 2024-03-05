@@ -22,7 +22,7 @@ for key in l1c_dict.keys():
             
 
 # Define the pixel
-pixel = [20,220]
+pixel = [330,440]
 
 # Load the plot class (default instrument is HARP2)
 plt_ = plot.Plot(l1c_dict)

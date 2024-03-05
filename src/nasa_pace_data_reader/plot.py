@@ -164,6 +164,7 @@ class Plot:
 
     def plotPixel(self, x, y, dataVar='i', xAxis=None, xlim=None, ylim=None,
                   axis=None, axisLabel=True, returnHandle=False, title=True,
+                  maskFlag=True,
                     **kwargs):
         """Plot the data for a pixel.
 
@@ -178,8 +179,7 @@ class Plot:
         """
         xAxis = self.xAxis if xAxis == None else xAxis
         assert xAxis in ['scattering_angle', 'view_angles', 'intensity_wavelength'], 'Invalid x-axis variable'
-
-        xData_, dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis=xAxis)
+        xData_, dataVar_, unit_ = self.physicalQuantity(x, y, dataVar, xAxis=xAxis, maskFlag=maskFlag)
 
         # Plot the data
         fig_, ax_ = plt.subplots(figsize=(6, 4)) if axis == None else (None, axis)
@@ -213,7 +213,7 @@ class Plot:
         if returnHandle:
             return fig_, ax_
         
-    def physicalQuantity(self, x=None, y=None, dataVar='i', xAxis='scattering_angle',):
+    def physicalQuantity(self, x=None, y=None, dataVar='i', xAxis='scattering_angle', maskFlag=True):
         """Get the physical quantity for the plot.
 
         Args:
@@ -248,7 +248,10 @@ class Plot:
                 # πI/F0
                 for i in self.bandAngles:
                     if not np.all(np.ma.getmask(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])):
-                        dataVar_ = self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex]*np.pi/self.data['F0'][self.bandAngles[i], self.wavIndex]
+                        if maskFlag:
+                            dataVar_ = dataVar_ = np.ma.getdata(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])*np.pi/self.data['F0'][self.bandAngles[i], self.wavIndex]
+                        else:
+                            dataVar_ = np.ma.getdata(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])*np.pi/np.ma.getdata(self.data['F0'][self.bandAngles[i], self.wavIndex])
                         continue
                 unit_= ''
             else:
@@ -641,6 +644,7 @@ class Plot:
                      saveFig=False, noShow=False, rivers=False, lakes=True,
                      rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
                      returnRGB=False, lon_0=None, lat_0=None, black_background=True,
+                     proj_size=None,
                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
@@ -676,9 +680,9 @@ class Plot:
         lat = self.data['latitude']
         lon = self.data['longitude']
 
-        proj_size=(1800,800) if proj == 'PlateCarree' else (1800,800)
+        proj_size=(900,400) if proj_size is None else proj_size
 
-        rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False) #Created projection image
+        rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, ) #Created projection image
         
         # Plotting in the axes
         lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
@@ -875,7 +879,7 @@ class Plot:
         newbb[newgg==0] = 0
 
         # Create a new 3D array for the projected RGB image
-        rgb_proj = np.zeros([np.shape(newrr)[0],np.shape(newrr)[1],3])
+        rgb_proj = np.zeros([np.shape(newrr)[0],np.shape(newrr)[1],3], dtype=np.float32)
 
         # Set the red, green, and blue channels of the new image
         rgb_proj[:,:,0] = newrr

@@ -49,7 +49,7 @@ def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
         fig2, ax2, rgb_['rgb_new'][l1c_file], rgb_['rgb_extent'][l1c_file]= plt_.projectedRGB(proj='Orthographic', viewAngleIdx=viewIndex,
                                                                                         normFactor=args.normFactor, saveFig=True, returnRGB=True,
                                                                                         figsize=(8, 8), noShow=True, savePath=args.save_path,
-                                                                                        lat_0=lat_0)
+                                                                                        lat_0=lat_0, proj_size=(400, 200))
         
         gc.collect()
         if temp_num > 0:

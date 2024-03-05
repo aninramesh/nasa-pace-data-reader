@@ -95,8 +95,8 @@ class L1C:
                 
                 self.obsNames = ['i']
                 self.wavelengthsStr = 'intensity_wavelength'
-                self.F0Str = 'intensity_F0'
-                self.VAStr = 'view_angles'
+                self.F0Str = 'intensity_f0'
+                self.VAStr = 'sensor_view_angle'
 
     def dateStr(self, filepath):
         """Returns the date string."""
