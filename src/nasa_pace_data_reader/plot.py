@@ -249,7 +249,7 @@ class Plot:
                 for i in self.bandAngles:
                     if not np.all(np.ma.getmask(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])):
                         if maskFlag:
-                            dataVar_ = dataVar_ = np.ma.getdata(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])*np.pi/self.data['F0'][self.bandAngles[i], self.wavIndex]
+                            dataVar_ = np.ma.getdata(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])*np.pi/self.data['F0'][self.bandAngles[i], self.wavIndex]
                         else:
                             dataVar_ = np.ma.getdata(self.data[dataVar][x, y, self.bandAngles[i], self.wavIndex])*np.pi/np.ma.getdata(self.data['F0'][self.bandAngles[i], self.wavIndex])
                         continue
@@ -661,6 +661,8 @@ class Plot:
         Returns:
             None
         """
+        assert proj.lower() in ['platecarree', 'orthographic', 'none'], 'Invalid projection method currently only PlateCarree and Orthographic are supported'
+
         if self.instrument == 'OCI':
             if np.nanmean(self.data['latitude']) > 0:
                 viewAngleIdx = [1]
@@ -682,7 +684,7 @@ class Plot:
 
         proj_size=(900,400) if proj_size is None else proj_size
 
-        rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, ) #Created projection image
+        rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, proj_size=proj_size) #Created projection image
         
         # Plotting in the axes
         lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
@@ -693,7 +695,7 @@ class Plot:
         rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
 
         # Prepare figure and axes
-        if ax is None:
+        if ax is None and proj.lower() != 'none':
             print('...Creating a new figure')
             if figsize is None:
                 fig = plt.figure(figsize=(4, 5), dpi=self.plotDPI) if fig is None else fig
@@ -754,31 +756,39 @@ class Plot:
 
         else:
             # Handle invalid projection type
-            print('Invalid projection method')
+            if proj.lower() == 'none':
+                print('...No projection method selected')
+            else:
+                print('Invalid projection method')
 
-        # set a margin around the data
-        ax.set_xmargin(0.05)
-        ax.set_ymargin(0.05)
+        # These operations are common to both projections but not needed for just getting the RGB interpolated data
+        if proj.lower() != 'none':
+            # set a margin around the data
+            ax.set_xmargin(0.05)
+            ax.set_ymargin(0.05)
 
-        if setTitle:
-            # set the title using the date_time
-            fontColor = 'tan' if black_background else 'black'
-            ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
-            
+            if setTitle:
+                # set the title using the date_time
+                fontColor = 'tan' if black_background else 'black'
+                ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
+                
 
-        plt.box(on=None)
-        plt.show() if not noShow else None
+            plt.box(on=None)
+            plt.show() if not noShow else None
 
-        if saveFig:
-            location = f'./{self.instrument}_RGB_{str(viewAngleIdx[0])}_proj_{proj}.png'
-            if savePath is not None:
-                location = savePath
-            fig.savefig(location, dpi=self.plotDPI)
-            print(f'...Figure saved at {location}')
+            if saveFig:
+                location = f'./{self.instrument}_RGB_{str(viewAngleIdx[0])}_proj_{proj}.png'
+                if savePath is not None:
+                    location = savePath
+                fig.savefig(location, dpi=self.plotDPI)
+                print(f'...Figure saved at {location}')
 
         # return the figure and axes and the projected RGB
         if returnRGB:
-            return fig, ax, rgb_new, rgb_extent
+            if proj.lower() == 'none':
+                return rgb_new, rgb_extent
+            else:
+                return fig, ax, rgb_new, rgb_extent
 
 
     def meshgridRGB(self, LON, LAT, proj_size=(900,400), return_mapdata=False):

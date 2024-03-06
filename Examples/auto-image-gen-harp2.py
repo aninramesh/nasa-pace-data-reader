@@ -33,12 +33,12 @@ def plotL1C(args):
 
     # plot RGB in default plate carree projection
     ax1 = fig_.add_subplot(221, projection=ccrs.PlateCarree())
-    plt_.projectedRGB(normFactor=600, noShow=True, ax=ax1, setTitle=False)
+    plt_.projectedRGB(normFactor=args.normFactor, noShow=True, ax=ax1, setTitle=False)
     ax1.set_title('Intensity\n(R=670 nm, G=550 nm, B=440 nm)')
 
     # plot RGB in with different view angle
     ax2 = fig_.add_subplot(222, projection=ccrs.PlateCarree())
-    plt_.projectedRGB(var='i', viewAngleIdx=[36, 73, 84], normFactor=600,
+    plt_.projectedRGB(var='i', viewAngleIdx=[36, 73, 84], normFactor=args.normFactor,
                        scale=[0.85, 1.4, 1], ax=ax2, noShow=True, setTitle=False)
     # plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
     ax2.set_title('Intensity\n(R=670 nm, G=870 nm, B=440 nm)')
@@ -56,6 +56,7 @@ def plotL1C(args):
     ax4.set_title('Polarized Radiance\n(R=670 nm, G=870 nm, B=440 nm)')
 
     fig_.suptitle(f'HARP2 L1C Quicklook\n {l1c_dict["date_time"]} UTC')
+    
     try:
         fig_.savefig(args.save_path, dpi=args.dpi)
         print(f'Quicklook saved to {args.save_path}')
@@ -64,7 +65,7 @@ def plotL1C(args):
         return 1
 
     # plot RGB in Orthographic projection
-    plt_.projectedRGB(proj='Orthographic', normFactor=600, saveFig=True,
+    plt_.projectedRGB(proj='Orthographic', normFactor=args.normFactor, saveFig=True,
                     figsize=(5, 5), noShow=True, savePath=args.save_path.replace('.png', '_orthographic.png'))
 
     return 0
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     #-- Screen printing time and version
     mtime_str = datetime.fromtimestamp(
         Path(__file__).stat().st_mtime).isoformat(sep=' ', timespec='seconds')
-    print(f'quicklook_harp2_l1c v{VERSION} ({mtime_str})\n')
+    print(f'({mtime_str})\n')
 
     #--------------------------------------------------------------=---
     #-- 1. Command-line arguments/options with argparse
@@ -100,6 +101,7 @@ if __name__ == "__main__":
     parser.add_argument('--instrument', type=str, default='HARP2', help='HARP2, or AirHARP2',
                         choices=['HARP2','AirHARP2'])
     parser.add_argument('--dpi', type=int, default=300, help='DPI of the saved figure')
+    parser.add_argument('--normFactor', type=int, default=300, help='Normalization factor for the RGB plot')
 
     #-- retrieve arguments
     args = parser.parse_args()
@@ -107,6 +109,7 @@ if __name__ == "__main__":
     #-- validate arguments
     assert os.path.exists(args.l1c_file),     'l1c_file does not exist!' 
     assert args.instrument in ['HARP2','AirHARP2'], 'instrument must be HARP2 or AirHARP2'
+    assert args.normFactor > 0, 'normFactor must be greater than 0'
 
     # save the figure in the same directory as the L1C file
     if args.save_path is None:

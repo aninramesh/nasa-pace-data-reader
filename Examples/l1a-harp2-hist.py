@@ -16,7 +16,11 @@ Add more groups and variable as needed
 '''
 
 # index of line
-idx = -1
+if len(sys.argv) > 2:
+    idx = int(sys.argv[2])
+else:
+    # default index of the line define it here if not passed as an argument
+    idx = 30
 # maximum count
 iMax = 8192
 # define the bins
@@ -88,13 +92,13 @@ if len(sys.argv) > 1:
         sys.exit(1)
 else:
     # change this to the directory where the files are located (only used if the directory is not passed as an argument)
-    HARP2_dir = '/Users/aputhukkudy/Downloads/25'
+    HARP2_dir = '/Users/aputhukkudy/Downloads/26/new'
 
 # get all the files with matching pattern `PACE_HARP2*.L1A.nc`
 files = list(Path(HARP2_dir).rglob('PACE_HARP2*.L1A.nc'))
 
 # plot the histogram (for all the sensors in the same plot)
-plotHistogram = False
+plotHistogram = True
 
 # initialize the counts
 counts_1_Total = np.zeros(predefined_bin.shape[0]-1)
@@ -105,51 +109,48 @@ counts_3_Total = np.zeros(predefined_bin.shape[0]-1)
 for file in files:
     print(file)
     try:
-        counts_1, counts_2, counts_3 = plotHist(file, idx, iMax, predefined_bin)
+        counts_1, counts_2, counts_3 = plotHist(file, idx=idx, iMax=iMax, bins_=predefined_bin)
         counts_1_Total += counts_1
         counts_2_Total += counts_2
         counts_3_Total += counts_3
         
-        # plot the histogram (for all the sensors in the same plot)
-        if plotHistogram:
-            plt.plot(predefined_bin[1:], counts_1, label='sensor1')
-            plt.plot(predefined_bin[1:], counts_2, label='sensor2')
-            plt.plot(predefined_bin[1:], counts_3, label='sensor3')
-            plt.legend()
-            plt.show()
     except Exception as e:
         print('Error reading the file: {}'.format(file))
         print('Error: {}'.format(e))
         continue
     
 # plot the histogram (for all the sensors in the same plot) after reading all the files
-plt.hist(predefined_bin[1:], bins=predefined_bin, weights=counts_1_Total, label='sensor1', alpha=0.3)
-plt.hist(predefined_bin[1:], bins=predefined_bin, weights=counts_2_Total, label='sensor2', alpha=0.3)
-plt.hist(predefined_bin[1:], bins=predefined_bin, weights=counts_3_Total, label='sensor3', alpha=0.3)
-plt.legend()
-plt.xlabel('Counts')
-plt.ylabel('Frequency')
-plt.title('%s \n HARP2 L1A Histogram' %HARP2_dir)
-# keep the x axis in log scale
-plt.yscale('log')
-plt.show()
+# plt.hist(predefined_bin[1:], bins=predefined_bin, weights=counts_1_Total, label='sensor1', alpha=0.3)
+# plt.hist(predefined_bin[1:], bins=predefined_bin, weights=counts_2_Total, label='sensor2', alpha=0.3)
+# plt.hist(predefined_bin[1:], bins=predefined_bin, weights=counts_3_Total, label='sensor3', alpha=0.3)
+if plotHistogram:
+    plt.plot(predefined_bin[1:], counts_1_Total, label='sensor1')
+    plt.plot(predefined_bin[1:], counts_2_Total, label='sensor2')
+    plt.plot(predefined_bin[1:], counts_3_Total, label='sensor3')
+    plt.legend()
+    plt.xlabel('Counts')
+    plt.ylabel('Frequency')
+    plt.title('%s \n HARP2 L1A Histogram' %HARP2_dir)
+    # keep the x axis in log scale
+    plt.yscale('log')
+    plt.show()
 
-# save the histogram plot
-plt.savefig('%s/histogram.png' %HARP2_dir, dpi=int(300), bbox_inches='tight')
-print( f'Saved histogram.png to {HARP2_dir}')
+    # save the histogram plot
+    plt.savefig('%s/histogram-%s.png' %(HARP2_dir,str(idx)), dpi=int(300), bbox_inches='tight')
+    print( f'Saved histogram.png to {HARP2_dir}')
 
 # save the histogram data to a txt file
-with open('%s/sensor1.txt' %HARP2_dir, 'w') as f:
+with open('%s/sensor1-%s.txt' %(HARP2_dir, str(idx)), 'w') as f:
     f.write('Bin Counts\n')
     np.savetxt(f, np.vstack((predefined_bin[1:], counts_1_Total)).T, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
     print( f'Saved sensor1.txt to {HARP2_dir}')
     f.close()
-with open('%s/sensor2.txt' %HARP2_dir, 'w') as f:
+with open('%s/sensor2-%s.txt' %(HARP2_dir, str(idx)), 'w') as f:
     f.write('Bin Counts\n')
     np.savetxt(f, np.vstack((predefined_bin[1:], counts_2_Total)).T, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
     print( f'Saved sensor2.txt to {HARP2_dir}')
     f.close()
-with open('%s/sensor3.txt' %HARP2_dir, 'w') as f:
+with open('%s/sensor3-%s.txt' %(HARP2_dir, str(idx)), 'w') as f:
     f.write('Bin Counts\n')
     np.savetxt(f, np.vstack((predefined_bin[1:], counts_3_Total)).T, fmt='%s', delimiter=' ', newline='\n', header='', footer='', comments='# ', encoding=None)
     print( f'Saved sensor3.txt to {HARP2_dir}')

@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Downloads/PACE_HARP2.20240228T125638.L1C.nc'
+fileName = '/Users/aputhukkudy/Downloads/hipp360/PACE_HARP2.20240228T125638.L1C.nc'
 
 # Read the file
 l1c = L1.L1C()
@@ -22,7 +22,7 @@ for key in l1c_dict.keys():
             
 
 # Define the pixel
-pixel = [330,440]
+pixel = [230,310]
 
 # Load the plot class (default instrument is HARP2)
 plt_ = plot.Plot(l1c_dict)
