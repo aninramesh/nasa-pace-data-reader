@@ -714,7 +714,6 @@ class Plot:
                 ax = plt.axes(projection=ccrs.Orthographic(lon_center, lat_center))
             else:
                 ax = ax
-
             ax.stock_img()
             ax.set_global()
 
