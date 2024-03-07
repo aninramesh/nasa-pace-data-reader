@@ -48,8 +48,8 @@ def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
         # plot RGB in Orthographic projection
         fig2, ax2, rgb_['rgb_new'][l1c_file], rgb_['rgb_extent'][l1c_file]= plt_.projectedRGB(proj='Orthographic', viewAngleIdx=viewIndex,
                                                                                         normFactor=args.normFactor, saveFig=True, returnRGB=True,
-                                                                                        figsize=(8, 8), noShow=True, savePath=args.save_path,
-                                                                                        lat_0=lat_0, proj_size=(400, 200))
+                                                                                        figsize=(6, 6), noShow=True, savePath=args.save_path,
+                                                                                        lat_0=lat_0, proj_size=(200, 100))
         
         gc.collect()
         if temp_num > 0:
@@ -72,7 +72,7 @@ def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
             print('---'*10)
         return None
 
-def makeMovieFromImages(movie_dir ,movie_name='movie', px=1600):
+def makeMovieFromImages(movie_dir ,movie_name='movie', px=1600, codec='mpeg4'):
     """ Stitch the images in a directory into a movie
     
     Args:
@@ -89,8 +89,15 @@ def makeMovieFromImages(movie_dir ,movie_name='movie', px=1600):
         os.system(f'convert {seq_image} -resize {px}x{px} {movie_dir}/{i:04d}_seq.png')
     
     # Create the movie using list of images
-    os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec mpeg4 -y {movie_dir}/{movie_name}.mp4')
-    os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec mpeg4 -y {movie_dir}/{movie_name}_seq.mp4')
+    if codec == 'mpeg4':
+        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec mpeg4 -crf 0 -y {movie_dir}/{movie_name}.mp4')
+        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec mpeg4 -crf 0 -y {movie_dir}/{movie_name}_seq.mp4')
+    elif codec == 'libx264':
+        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec libx264  -y {movie_dir}/{movie_name}.mp4')
+        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec libx264 -y {movie_dir}/{movie_name}_seq.mp4')
+    elif codec == 'h264':
+        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -c libx264 -crf 18 -preset ultrafast -pix_fmt yuv420p -y {movie_dir}/{movie_name}.mp4')
+        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -c libx264 -crf 18 -preset ultrafast -pix_fmt yuv420p -y {movie_dir}/{movie_name}_seq.mp4')
     
 
 #--------------------------------------------------------------#
@@ -154,7 +161,6 @@ args.fixed_lat = args_.fixed_lat
 # viewIndex
 if args_.viewIndex == 0:
     viewIndex = [36, 4, 84]
-
 elif args_.viewIndex == 1:
     viewIndex = [19, 1, 81]
 elif args_.viewIndex == 2:
@@ -195,7 +201,7 @@ with open(f'{movie_dir}/rgb_dict.pkl', 'wb') as f:
 gc.collect()
     
 try:
-    makeMovieFromImages(movie_dir=movie_dir,  movie_name='FullOrbit')
+    makeMovieFromImages(movie_dir=movie_dir,  movie_name='FullOrbit', px=1600, codec='h264') if bool(args_.movie_only) else None
 except Exception as e:
     print(f'Error: {e}')
     print('No need to worry, the images are saved in the directory, you can create the movie using the following command:')

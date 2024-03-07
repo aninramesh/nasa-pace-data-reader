@@ -94,62 +94,62 @@ if __name__ == "__main__":
         Path(__file__).stat().st_mtime).isoformat(sep=' ', timespec='seconds')
     print(f'({mtime_str})\n')
 
-    #--------------------------------------------------------------=---
-    #-- 1. Command-line arguments/options with argparse
-    #--------------------------------------------------------------=---
+    # #--------------------------------------------------------------=---
+    # #-- 1. Command-line arguments/options with argparse
+    # #--------------------------------------------------------------=---
 
-    parser = argparse.ArgumentParser(
-                formatter_class=argparse.RawTextHelpFormatter,
-                description='HARP2 L1C composite of the day',
-                epilog="""
-    EXIT Status:
-        0   : All is well in the world
-        1   : Dunno, something horrible occurred
-                """)
+    # parser = argparse.ArgumentParser(
+    #             formatter_class=argparse.RawTextHelpFormatter,
+    #             description='HARP2 L1C composite of the day',
+    #             epilog="""
+    # EXIT Status:
+    #     0   : All is well in the world
+    #     1   : Dunno, something horrible occurred
+    #             """)
 
-    #-- required arguments
-    parser.add_argument('--l1c_dir',  type=str, required=True, help='path+filename of the HARP2 Level 1C file')
-    parser.add_argument('--save_path', type=str, required=False, help='path to save the composite image')
+    # #-- required arguments
+    # parser.add_argument('--l1c_dir',  type=str, required=True, help='path+filename of the HARP2 Level 1C file')
+    # parser.add_argument('--save_path', type=str, required=False, help='path to save the composite image')
 
-    #-- optional arguments
-    parser.add_argument('--verbose', '-v', action='store_true')
-    parser.add_argument('--instrument', type=str, default='HARP2', help='HARP2, or AirHARP2',
-                        choices=['HARP2','AirHARP2'])
-    parser.add_argument('--dpi', type=int, default=300, help='DPI of the saved figure')
-    parser.add_argument('--normFactor', type=int, default=300, help='Normalization factor for the RGB plot')
+    # #-- optional arguments
+    # parser.add_argument('--verbose', '-v', action='store_true')
+    # parser.add_argument('--instrument', type=str, default='HARP2', help='HARP2, or AirHARP2',
+    #                     choices=['HARP2','AirHARP2'])
+    # parser.add_argument('--dpi', type=int, default=300, help='DPI of the saved figure')
+    # parser.add_argument('--normFactor', type=int, default=300, help='Normalization factor for the RGB plot')
 
-    #-- retrieve arguments
-    args = parser.parse_args()
+    # #-- retrieve arguments
+    # args = parser.parse_args()
 
-    #-- validate arguments
-    assert os.path.exists(args.l1c_dir), 'l1c_file does not exist!' 
-    assert args.instrument in ['HARP2','AirHARP2'], 'instrument must be HARP2 or AirHARP2'
-    assert args.normFactor > 0, 'normFactor must be greater than 0'
+    # #-- validate arguments
+    # assert os.path.exists(args.l1c_dir), 'l1c_file does not exist!' 
+    # assert args.instrument in ['HARP2','AirHARP2'], 'instrument must be HARP2 or AirHARP2'
+    # assert args.normFactor > 0, 'normFactor must be greater than 0'
 
-    # save the figure in the same directory as the L1C file
-    if args.save_path is None:
-        print('save_path is not provided. Saving the composite in the same directory as the L1C files')
-        # add quicklook/composite to the directory name
-        args.save_path = os.path.join(os.path.dirname(args.l1c_dir), 'quicklook/composite')
-        # create a new directory
-        os.makedirs(args.save_path, exist_ok=True)
-    if Path(args.save_path).is_dir():
-        os.makedirs(args.save_path, exist_ok=True)
-        assert os.path.exists(args.save_path), 'save_path does not exist!'
-    else:
-        if os.path.dirname(args.save_path)!='':
-            assert os.path.exists(os.path.dirname(args.save_path)), 'save_path does not exist!'
+    # # save the figure in the same directory as the L1C file
+    # if args.save_path is None:
+    #     print('save_path is not provided. Saving the composite in the same directory as the L1C files')
+    #     # add quicklook/composite to the directory name
+    #     args.save_path = os.path.join(os.path.dirname(args.l1c_dir), 'quicklook/composite')
+    #     # create a new directory
+    #     os.makedirs(args.save_path, exist_ok=True)
+    # if Path(args.save_path).is_dir():
+    #     os.makedirs(args.save_path, exist_ok=True)
+    #     assert os.path.exists(args.save_path), 'save_path does not exist!'
+    # else:
+    #     if os.path.dirname(args.save_path)!='':
+    #         assert os.path.exists(os.path.dirname(args.save_path)), 'save_path does not exist!'
 
     #--------------------------------------------------------------#
     #-- run the main program
     #--------------------------------------------------------------#
             
     # define the args for debug
-    # args = Args()
-    # args.l1c_dir = '/Users/aputhukkudy/Downloads/03-05'
-    # args.save_path = '/Users/aputhukkudy/Downloads/03-05/composite'
-    # args.normFactor = 300
-    # args.dpi = 300
+    args = Args()
+    args.l1c_dir = '/Users/aputhukkudy/Downloads/03-05'
+    args.save_path = '/Users/aputhukkudy/Downloads/03-05/composite'
+    args.normFactor = 300
+    args.dpi = 300
             
     # rgb_ dict
     rgb_ = {}
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # plot the composite image in robinson projection
     fig = plt.figure(figsize=(16, 8))
     axm = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson(central_longitude=300.))
-
+    fig.patch.set_facecolor('black')
     # set the extent to global
     axm.set_global()
 
@@ -187,7 +187,7 @@ if __name__ == "__main__":
                   transform=ccrs.PlateCarree())
 
     # set the title
-    axm.set_title('HARP2 L1C Composite\n%s' %(date[:8]), fontsize=12)
+    axm.set_title('HARP2 L1C Composite\n%s' %(date[:8]), fontsize=12, color='tan')
     # tight layout
     plt.tight_layout()
 

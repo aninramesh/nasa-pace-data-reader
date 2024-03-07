@@ -687,9 +687,18 @@ class Plot:
         rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, proj_size=proj_size) #Created projection image
         
         # Plotting in the axes
-        lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
+         # find if the longitude has a transition from -180 to 180
+        transitionFlag = False
+        if np.abs(lon.max() - lon.min()) > 180 and lon_0 is None:
+            transitionFlag = True
+            # use cosine to find the center of the projection
+            ln_max = np.cos(np.deg2rad(lon.max()))
+            ln_min = np.cos(np.deg2rad(lon.min()))
+            lon_center = np.rad2deg(np.arccos((ln_max + ln_min) / 2))
+        else:
+            lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
         lat_center = (lat.max() + lat.min()) / 2 if lat_0 is None else lat_0
-        print(f'...Centering the projection at {lon_center}, {lat_center}')
+        print(f'...Centering the projection at lon:{lon_center}, lat:{lat_center}')
 
         # Create a border of the images        
         rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
@@ -771,7 +780,6 @@ class Plot:
                 fontColor = 'tan' if black_background else 'black'
                 ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
                 
-
             plt.box(on=None)
             plt.show() if not noShow else None
 
@@ -846,9 +854,22 @@ class Plot:
         mx_lon = np.max(LON)
         mn_lon = np.min(LON)
 
+        # find if the longitude has a transition from -180 to 180
+        transitionFlag = False
+        if np.abs(mx_lon - mn_lon) > 180:
+            transitionFlag = True
+            # apply cosine conversion to the longitude and latitude
+            LON = np.cos(np.radians(LON))
+            LAT = np.cos(np.radians(LAT))
+            mx_lon = np.cos(np.radians(mx_lon))
+            mn_lon = np.cos(np.radians(mn_lon))
+            mx_lat = np.cos(np.radians(mx_lat))
+            mn_lat = np.cos(np.radians(mn_lat))
+
         # Calculate the midpoint of the latitude and longitude
-        lat0 = 1/2.*(mn_lat+mx_lat)
-        lon0 = 1/2.*(mn_lon+mx_lon)
+        lat0 = 1/2.*(mn_lat+mx_lat)  if not transitionFlag else 1/2.*(np.cos(np.radians(mn_lat))+np.cos(np.radians(mx_lat)))
+        # if the transitionFlag is True, calculate the midpoint of the longitude using the cosine of the longitude
+        lon0 = 1/2.*(mn_lon+mx_lon) if not transitionFlag else 1/2.*(np.cos(np.radians(mn_lon))+np.cos(np.radians(mx_lon)))
 
         # Set the size of the new projected image
         x_new = proj_size[0]
@@ -865,6 +886,12 @@ class Plot:
         newrr = interpolate.griddata( (LON.ravel(),LAT.ravel()), rr.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
         newgg = interpolate.griddata( (LON.ravel(),LAT.ravel()), gg.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
         newbb = interpolate.griddata( (LON.ravel(),LAT.ravel()), bb.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
+
+        # if the transitionFlag is True, convert the longitude back to degrees
+        if transitionFlag:
+            newrr = np.degrees(np.arccos(newrr))
+            newgg = np.degrees(np.arccos(newgg))
+            newbb = np.degrees(np.arccos(newbb))
 
         # Reshape the color channels to the size of the new image
         newrr = newrr.reshape(x_new,y_new)
@@ -895,9 +922,45 @@ class Plot:
         rgb_proj[:,:,1] = newgg
         rgb_proj[:,:,2] = newbb
 
+        # if transitionFlag is True, convert the longitude back to degrees
+        if transitionFlag:
+            lon0 = np.degrees(np.arccos(lon0))
+            lat0 = np.degrees(np.arccos(lat0))
+            mx_lat = np.degrees(np.arccos(mx_lat))
+            mn_lat = np.degrees(np.arccos(mn_lat))
+            mx_lon = np.degrees(np.arccos(mx_lon))
+            mn_lon = np.degrees(np.arccos(mn_lon))
+            xx = np.degrees(np.arccos(xx))
+            yy = np.degrees(np.arccos(yy))
+
         # If return_mapdata is True, return the map data
         if return_mapdata:
             return rgb_proj, (lon0,lat0), ((mn_lon,mx_lon),(mn_lat,mx_lat))
         else:
             return rgb_proj,xx,yy
         
+    #---------------------------------------------------
+    # Other functions
+    #---------------------------------------------------
+    # def cosine_conversion(longitude_matrix, direction="forward"):
+    #     """Converts longitudes in a 2D matrix to cosines or back to degrees.
+
+    #     Args:
+    #         longitude_matrix: A 2D NumPy array of longitudes in degrees.
+    #         direction:  "forward" for longitude to cosine, "inverse" for cosine to longitude.
+
+    #     Returns:
+    #         A NumPy array of the converted values.
+    #     """
+
+    #     if direction == "forward":
+    #         return np.cos(np.radians(longitude_matrix))
+    #     elif direction == "inverse":
+    #         angles_radians = np.arccos(longitude_matrix)
+    #         return np.degrees(angles_radians)
+    #     else:
+    #         raise ValueError("Invalid direction. Choose 'forward' or 'inverse'.")
+        
+#---------------------------------------------------
+# End of the class Plot
+#---------------------------------------------------
