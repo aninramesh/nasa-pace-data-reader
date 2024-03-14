@@ -116,6 +116,12 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+### v0.0.4.4
+- Resolved the projection problem with the composite image for granules near the dateline by including the flag `returnTransitionFlag=True` in the `projectRGB()` function.
+
+### v0.0.4.3
+- Included the capability to read the HARP2 L1C file with sensor counts.
+
 ### v0.0.4.2
 - Resolved the issue related to averaging negative and positive longitudes.
 

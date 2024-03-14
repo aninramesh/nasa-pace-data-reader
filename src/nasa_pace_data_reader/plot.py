@@ -649,8 +649,7 @@ class Plot:
                      saveFig=False, noShow=False, rivers=False, lakes=True,
                      rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
                      returnRGB=False, lon_0=None, lat_0=None, black_background=True,
-                     proj_size=None,
-                    **kwargs):
+                     proj_size=None, returnTransitionFlag=False, **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
         Args:
@@ -811,6 +810,9 @@ class Plot:
         # return the figure and axes and the projected RGB
         if returnRGB:
             if proj.lower() == 'none':
+                if proj.lower() == 'none' and returnTransitionFlag:
+                    return rgb_new, rgb_extent, transitionFlag
+                
                 return rgb_new, rgb_extent
             else:
                 return fig, ax, rgb_new, rgb_extent

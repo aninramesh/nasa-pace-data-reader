@@ -52,7 +52,7 @@ def L1C_composite(args, rgb_, viewIndex=[36, 4, 84]):
         dictionary to store the RGB images and extent"""
 
     # list all the files in the directory
-    l1c_files = [f for f in os.listdir(args.l1c_dir) if f.endswith('L1C.nc')]
+    l1c_files = [f for f in os.listdir(args.l1c_dir) if f.endswith('L1C.5km.nc')]
     
     # sort by filename
     l1c_files.sort()
@@ -72,10 +72,10 @@ def L1C_composite(args, rgb_, viewIndex=[36, 4, 84]):
             plt_ = plot.Plot(l1c_dict)
 
             # plot RGB in Orthographic projection
-            rgb_['rgb_new'][l1c_file], rgb_['rgb_extent'][l1c_file]= plt_.projectedRGB(proj='None', viewAngleIdx=viewIndex,
+            rgb_['rgb_new'][l1c_file], rgb_['rgb_extent'][l1c_file], rgb_['dateline'][l1c_file]= plt_.projectedRGB(proj='None', viewAngleIdx=viewIndex,
                                                                                     normFactor=args.normFactor, saveFig=True, returnRGB=True,
                                                                                     figsize=(3, 3), noShow=True, savePath=args.save_path,
-                                                                                    proj_size=(200, 100))
+                                                                                    proj_size=(200, 100), returnTransitionFlag=True)
             
             gc.collect()
 
@@ -147,8 +147,8 @@ if __name__ == "__main__":
             
     # define the args for debug
     # args = Args()
-    # args.l1c_dir = '/Users/aputhukkudy/Downloads/03-05'
-    # args.save_path = '/Users/aputhukkudy/Downloads/03-05/composite'
+    # args.l1c_dir = '/Users/aputhukkudy/Downloads/03-12'
+    # args.save_path = '/Users/aputhukkudy/Downloads/03-1/composite'
     # args.normFactor = 300
     # args.dpi = 300
             
@@ -156,6 +156,7 @@ if __name__ == "__main__":
     rgb_ = {}
     rgb_['rgb_new'] = {}
     rgb_['rgb_extent'] = {}
+    rgb_['dateline'] = {}
 
     # plot the composite 
     viewIndex = [36, 4, 84]   
@@ -177,16 +178,20 @@ if __name__ == "__main__":
 
     # add the RGB image
     for key in rgb_['rgb_new'].keys():
+
+        clon = 180 if rgb_['dateline'][key] else 0
         # mask the black pane
         rgb_new = np.ma.masked_where(rgb_['rgb_new'][key]== 0, rgb_['rgb_new'][key])
-        axm.imshow(rgb_new, origin='lower', extent=rgb_['rgb_extent'][key], transform=ccrs.PlateCarree())
+        axm.imshow(rgb_new, origin='lower', extent=rgb_['rgb_extent'][key], transform=ccrs.PlateCarree(central_longitude=clon))
 
         # add the date
         date = key.split('.')[1]
         # locate the date at the center of the projected image
+        print('Longitude: %f, Latitude: %f' %(np.mean(rgb_['rgb_extent'][key][:2]), np.mean(rgb_['rgb_extent'][key][2:])))
+        print('Dateline: %s' %rgb_['dateline'][key])
         axm.text(np.mean(rgb_['rgb_extent'][key][:2]), np.mean(rgb_['rgb_extent'][key][2:]), date[9:],
                   fontsize=6, color='m', ha='center', va='center', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round', pad=0.5, alpha=0.75),
-                  transform=ccrs.PlateCarree())
+                  transform=ccrs.PlateCarree(central_longitude=clon))
 
     # set the title
     axm.set_title('HARP2 L1C Composite\n%s' %(date[:8]), fontsize=12, color='tan')
@@ -194,7 +199,8 @@ if __name__ == "__main__":
     plt.tight_layout()
 
     # save the figure
+    # add the date to the filename
     os.makedirs(args.save_path, exist_ok=True)
-    saveFileName = os.path.join(args.save_path, 'composite_viewIdx-%s.png' %str(viewIndex[0]))
+    saveFileName = os.path.join(args.save_path, 'composite_viewIdx-%s-%s.png' %(str(viewIndex[0]), datetime.now().strftime('%Y-%m-%d-%H-%M')))
     fig.savefig(saveFileName, dpi=args.dpi)
     print(f'Composite saved to {saveFileName}')
