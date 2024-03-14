@@ -390,7 +390,7 @@ class Plot:
 
     def plotRGB(self, var='i', viewAngleIdx=[38, 4, 84],
                  scale= 1, normFactor=200, returnRGB=False,
-                 plot=True, rgb_dolp=False, **kwargs):
+                 plot=True, rgb_dolp=False, saveFig=False, **kwargs):
         """Plot the RGB image of the instrument.
 
         Args:
@@ -470,6 +470,11 @@ class Plot:
 
         if returnRGB:
             self.rgb = rgb
+
+        if saveFig:
+            location = f'./{self.instrument}_RGB.png'
+            plt.savefig(location, dpi=self.plotDPI)
+            print(f'...RGB image saved at {location}')
 
     
     def projectVar(self, var='i', viewAngleIdx=None, viewAngle= 0,
@@ -691,16 +696,20 @@ class Plot:
         transitionFlag = False
         if np.abs(lon.max() - lon.min()) > 180 and lon_0 is None:
             transitionFlag = True
-            # use cosine to find the center of the projection
-            ln_max = np.cos(np.deg2rad(lon.max()))
-            ln_min = np.cos(np.deg2rad(lon.min()))
-            lon_center = np.rad2deg(np.arccos((ln_max + ln_min) / 2))
+            # use sine and cosine to find the center of the projection
+            lon_center, ln_min, ln_max = self.average_longitude(lon.ravel())
         else:
             lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
         lat_center = (lat.max() + lat.min()) / 2 if lat_0 is None else lat_0
         print(f'...Centering the projection at lon:{lon_center}, lat:{lat_center}')
 
-        # Create a border of the images        
+        # Create a border of the images 
+        # if transitionFlag:
+        #     # if ln_max > 0:
+        #     #     rgb_extent = [ln_max, ln_min,  nlat.min(), nlat.max()]
+        #     # elif ln_min < 0:
+        #     rgb_extent = [180-ln_max, -(ln_min+180), nlat.min(), nlat.max()]
+        # else: 
         rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
 
         # Prepare figure and axes
@@ -735,12 +744,18 @@ class Plot:
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
 
             # Display the image in the projection
-            ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
+            if transitionFlag:
+                ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(central_longitude=lon_center), **kwargs)
+            else:
+                ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
 
         elif proj == 'PlateCarree':
             # Create a PlateCarree projection
             if ax is None:
-                ax = plt.axes(projection=ccrs.PlateCarree())
+                if transitionFlag:
+                    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=lon_center))
+                else:
+                    ax = plt.axes(projection=ccrs.PlateCarree())
             else: 
                 # print('...Using the existing axes')
                 ax=ax
@@ -756,7 +771,10 @@ class Plot:
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
             
             # Display the image in the projection
-            ax.imshow(rgb_new, origin='lower', extent=rgb_extent, **kwargs)
+            if transitionFlag:
+                ax.imshow(rgb_new, origin='lower', extent=rgb_extent, transform=ccrs.PlateCarree(central_longitude=lon_center), **kwargs) 
+            else:
+                ax.imshow(rgb_new, origin='lower', extent=rgb_extent, **kwargs)
             # Add coastline feature
             ax.add_feature(cfeature.COASTLINE, edgecolor='black', linewidth=1, alpha=0.5)
             ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=1, alpha=0.5) if lakes else None
@@ -858,18 +876,20 @@ class Plot:
         transitionFlag = False
         if np.abs(mx_lon - mn_lon) > 180:
             transitionFlag = True
-            # apply cosine conversion to the longitude and latitude
-            LON = np.cos(np.radians(LON))
-            LAT = np.cos(np.radians(LAT))
-            mx_lon = np.cos(np.radians(mx_lon))
-            mn_lon = np.cos(np.radians(mn_lon))
-            mx_lat = np.cos(np.radians(mx_lat))
-            mn_lat = np.cos(np.radians(mn_lat))
+            # apply cosine conversion to the longitude and sine conversion latitude
+            # LON = np.sin(np.radians(LON))
+            # LAT = np.sin(np.radians(LAT))
+            lon_center, ln_min, ln_max = self.average_longitude(LON.ravel())
+            LON = np.where(LON < 0, -180 - LON, 180 - LON)
+            mx_lon = LON.min() 
+            mn_lon = LON.max()
+            mx_lat = LAT.max()
+            mn_lat = LAT.min()
 
         # Calculate the midpoint of the latitude and longitude
-        lat0 = 1/2.*(mn_lat+mx_lat)  if not transitionFlag else 1/2.*(np.cos(np.radians(mn_lat))+np.cos(np.radians(mx_lat)))
+        lat0 = 1/2.*(mn_lat+mx_lat)
         # if the transitionFlag is True, calculate the midpoint of the longitude using the cosine of the longitude
-        lon0 = 1/2.*(mn_lon+mx_lon) if not transitionFlag else 1/2.*(np.cos(np.radians(mn_lon))+np.cos(np.radians(mx_lon)))
+        lon0 = 1/2.*(mn_lon+mx_lon)
 
         # Set the size of the new projected image
         x_new = proj_size[0]
@@ -888,10 +908,10 @@ class Plot:
         newbb = interpolate.griddata( (LON.ravel(),LAT.ravel()), bb.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
 
         # if the transitionFlag is True, convert the longitude back to degrees
-        if transitionFlag:
-            newrr = np.degrees(np.arccos(newrr))
-            newgg = np.degrees(np.arccos(newgg))
-            newbb = np.degrees(np.arccos(newbb))
+        # if transitionFlag:
+        #     newrr = np.degrees(np.arccos(newrr))
+        #     newgg = np.degrees(np.arccos(newgg))
+        #     newbb = np.degrees(np.arccos(newbb))
 
         # Reshape the color channels to the size of the new image
         newrr = newrr.reshape(x_new,y_new)
@@ -923,21 +943,55 @@ class Plot:
         rgb_proj[:,:,2] = newbb
 
         # if transitionFlag is True, convert the longitude back to degrees
-        if transitionFlag:
-            lon0 = np.degrees(np.arccos(lon0))
-            lat0 = np.degrees(np.arccos(lat0))
-            mx_lat = np.degrees(np.arccos(mx_lat))
-            mn_lat = np.degrees(np.arccos(mn_lat))
-            mx_lon = np.degrees(np.arccos(mx_lon))
-            mn_lon = np.degrees(np.arccos(mn_lon))
-            xx = np.degrees(np.arccos(xx))
-            yy = np.degrees(np.arccos(yy))
+        # if transitionFlag:
+        #     lon0 = np.degrees(np.arcsin(lon0))
+        #     lon0 =  180-lon0 if lon0 > 0 else lon0
+        #     lat0 = np.degrees(np.arcsin(lat0))
+        #     mx_lat = np.degrees(np.arcsin(mx_lat))
+        #     mn_lat = np.degrees(np.arcsin(mn_lat))
+        #     mx_lon = np.degrees(np.arcsin(mx_lon))
+        #     mx_lon =  180-mx_lon if mx_lon > 0 else mx_lon
+        #     mn_lon = np.degrees(np.arcsin(mn_lon))
+        #     mn_lon =  180-mn_lon if mn_lon > 0 else mn_lon
+        #     xx = np.degrees(np.arcsin(xx))
+        #     # modify the longitude to -180 to 180 if +ve 180-xx, if -ve -180-xx, xx is  1D array
+        #     xx = np.where(xx < 0, -180 - xx, 180 - xx)
+        #     yy = np.degrees(np.arcsin(yy))
 
         # If return_mapdata is True, return the map data
         if return_mapdata:
             return rgb_proj, (lon0,lat0), ((mn_lon,mx_lon),(mn_lat,mx_lat))
         else:
             return rgb_proj,xx,yy
+        
+    def average_longitude(self, longitudes):
+        # Convert longitudes to radians
+        longitudes_rad = np.radians(longitudes)
+
+        # Convert to Cartesian coordinates
+        x = np.cos(longitudes_rad)
+        y = np.sin(longitudes_rad)
+
+        # Compute mean of Cartesian coordinates
+        x_mean = np.mean(x)
+        y_mean = np.mean(y)
+
+        # calculate the minimum and maximum of the longitudes
+        x_min = np.min(x)
+        x_max = np.max(x)
+        y_min = np.min(y)
+        y_max = np.max(y)
+
+        min_lon = np.degrees(np.arctan2(y_min, x_min))
+        max_lon = np.degrees(np.arctan2(y_max, x_max))
+
+        # Convert mean coordinates back to longitude
+        mean_longitude = np.degrees(np.arctan2(y_mean, x_mean))
+
+        # Adjust the range of mean longitude to [-180, 180]
+        mean_longitude = (mean_longitude + 180) % 360 - 180
+
+        return mean_longitude, min_lon, max_lon
         
     #---------------------------------------------------
     # Other functions

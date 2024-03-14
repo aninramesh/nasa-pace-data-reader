@@ -20,11 +20,13 @@ if len(sys.argv) > 2:
     idx = int(sys.argv[2])
 else:
     # default index of the line define it here if not passed as an argument
-    idx = 30
+    idx = -1
 # maximum count
 iMax = 8192
 # define the bins
-predefined_bin = np.linspace(0, iMax, 100)
+predefined_bin = np.linspace(0, iMax, 1000)
+# predefined_bin = np.logspace(np.log10(1), np.log10(iMax), 200)
+# predefined_bin = np.concatenate((np.linspace(0, 100, 10), np.logspace(np.log10(100), np.log10(iMax), 100)), axis=0) 
 
 def plotHist(fileName, idx=-1, iMax=8192, bins_=100):
     '''
@@ -61,9 +63,9 @@ def plotHist(fileName, idx=-1, iMax=8192, bins_=100):
 
         for i in idx:
             # plot the histogram for the given line
-            counts_1_i, _, _, = plt.hist(np.ravel(sensor1[:,i,:].data), bins=bins_)
-            counts_2_i, _, _, = plt.hist(np.ravel(sensor2[:,i,:].data), bins=bins_)
-            counts_3_i, _, _, = plt.hist(np.ravel(sensor3[:,i,:].data), bins=bins_)
+            counts_1_i, _, _, = plt.hist(np.ravel(sensor1[12:,i,:].data), bins=bins_)
+            counts_2_i, _, _, = plt.hist(np.ravel(sensor2[12:,i,:].data), bins=bins_)
+            counts_3_i, _, _, = plt.hist(np.ravel(sensor3[12:,i,:].data), bins=bins_)
 
             # add the counts
             counts_1 += counts_1_i
@@ -72,9 +74,9 @@ def plotHist(fileName, idx=-1, iMax=8192, bins_=100):
 
     else:
         # plot the histogram for the given line
-        counts_1, _, _, = plt.hist(np.ravel(sensor1[:,idx,:].data), bins=bins_)
-        counts_2, _, _, = plt.hist(np.ravel(sensor2[:,idx,:].data), bins=bins_)
-        counts_3, _, _, = plt.hist(np.ravel(sensor3[:,idx,:].data), bins=bins_)
+        counts_1, _, _, = plt.hist(np.ravel(sensor1[12:,idx,:].data), bins=bins_)
+        counts_2, _, _, = plt.hist(np.ravel(sensor2[12:,idx,:].data), bins=bins_)
+        counts_3, _, _, = plt.hist(np.ravel(sensor3[12:,idx,:].data), bins=bins_)
     plt.close()
 
     # close the net cdf file
@@ -92,7 +94,7 @@ if len(sys.argv) > 1:
         sys.exit(1)
 else:
     # change this to the directory where the files are located (only used if the directory is not passed as an argument)
-    HARP2_dir = '/Users/aputhukkudy/Downloads/26/new'
+    HARP2_dir = '/Users/aputhukkudy/Downloads/03-07/hipp36.aux3/'
 
 # get all the files with matching pattern `PACE_HARP2*.L1A.nc`
 files = list(Path(HARP2_dir).rglob('PACE_HARP2*.L1A.nc'))

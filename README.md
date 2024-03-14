@@ -116,6 +116,9 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+### v0.0.4.2
+- Resolved the issue related to averaging negative and positive longitudes.
+
 ### v0.0.3.26
 - Enhanced projection options for faster generation of interpolated RGB and extent.
 - Addressed and resolved bugs associated with reading OCI and HARP2 files.

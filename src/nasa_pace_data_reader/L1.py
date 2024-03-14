@@ -9,10 +9,13 @@ class L1C:
         
     """
 
-    def __init__(self, instrument='HARP2'):
+    def __init__(self, instrument='HARP2', experimental=False):
         """Initializes the class."""
+        self.experimental = False
         if instrument.lower() == 'harp2':
             self.instrument = 'HARP2'   # Default instrument
+            if experimental:
+                self.experimental = True
         elif instrument.lower() == 'spexone':
             self.instrument = 'SPEXone'
         elif instrument.lower() == 'oci':
@@ -61,7 +64,7 @@ class L1C:
                                 'solar_azimuth_angle', 'sensor_zenith_angle', 'sensor_azimuth_angle',
                                 'height']
                 
-                self.obsNames = ['i', 'q', 'u', 'dolp']
+                self.obsNames = ['i', 'q', 'u', 'dolp'] if not self.experimental else ['i', 'q', 'u', 'dolp', 'sensor1', 'sensor2', 'sensor3']
                 self.wavelengthsStr = 'intensity_wavelength'
                 self.F0Str = 'intensity_f0'
                 self.VAStr = 'sensor_view_angle'
@@ -161,11 +164,16 @@ class L1C:
 
             data['_units'] = {}
             for var in obs_names:
-                data[var] = obs_data.variables[var][:]
+                try:
+                    data[var] = obs_data.variables[var][:]
 
-                # read the units for the variable
-                data['_units'][var] = obs_data.variables[var].units
-                self.unit(var, obs_data.variables[var].units)
+                    # read the units for the variable
+                    data['_units'][var] = obs_data.variables[var].units
+                    self.unit(var, obs_data.variables[var].units)
+                except KeyError as e:
+                    print(f'Error: {filename} does not contain the required variables.')
+                    print('Error:', e)
+                    print('Maybe the file is L1C experimental?')
 
             # read the F0 and unit
             data['F0'] = sensor_data.variables[self.F0Str][:]
@@ -297,11 +305,16 @@ class L1B:
 
             data['_units'] = {}
             for var in obs_names:
-                data[var] = obs_data.variables[var][:]
+                try:
+                    data[var] = obs_data.variables[var][:]
 
-                # read the units for the variable
-                data['_units'][var] = obs_data.variables[var].units
-                self.unit(var, obs_data.variables[var].units)
+                    # read the units for the variable
+                    data['_units'][var] = obs_data.variables[var].units
+                    self.unit(var, obs_data.variables[var].units)
+                except KeyError as e:
+                    print(f'Error: {filename} does not contain the required variables.')
+                    print('Error:', e)
+                    print('Maybe the file is L1B experimental?')
 
             # read the F0 and unit
             # data['F0'] = sensor_data.variables['intensity_F0'][:] # FIXME: This is not available in L1B

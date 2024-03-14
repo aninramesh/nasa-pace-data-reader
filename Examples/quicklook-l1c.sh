@@ -1,17 +1,26 @@
 #!/bin/bash
 
 # add the path to the target directory as an argument using --target-dir with multiple directories separated by a space
-# Example: ./quicklook-l1c.sh --target-dir /path/to/target/directory1 /path/to/target/directory2
+# Example: ./quicklook-l1c.sh --target-dir /path/to/target/directory1 --save-path /path/to/target/directory-save
 
 # autogenerate quicklooks for all *L1C.nc files in the target directory
 autogenPy=/data/archive/ESI/HARP2/Software/quicklook/auto-image-gen-harp2.py
 
-# Parse the command line arguments
+# Parse the command line arguments if no second argument is provided
+if [ $# -eq 0 ]; then
+    echo "No arguments provided"
+    exit 1
+fi
 while [[ $# -gt 0 ]]; do
     key="$1"
     case $key in
         --target-dir)
             target_dir="$2"
+            shift
+            shift
+            ;;
+        --save-path)
+            dest_dir_="$2"
             shift
             shift
             ;;
@@ -48,7 +57,14 @@ if [ -z "$(find "$target_dir" -name "*L1C.nc")" ]; then
 fi
 
 # destination directory
-dest_dir="$target_dir/quicklook"
+# Check if the target directory exists
+if [ ! -d "$dest_dir_" ]; then
+    echo "The save path does not exist: $dest_dir_"
+    mkdir -p "$target_dir/quicklook"
+else
+    dest_dir=$dest_dir_
+fi
+
 # create the destination directory if it does not exist
 mkdir -p "$dest_dir"
 
@@ -66,7 +82,7 @@ fi
 
 
 # List all *L1C.nc files in the target directory
-files=$(find "$target_dir" -name "*L1C.nc")
+files=$(find "$target_dir" -name "*L1C.5km.nc")
 
 # Loop through each file
 for file in $files; do

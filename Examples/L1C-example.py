@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Downloads/hipp360/PACE_HARP2.20240228T125638.L1C.nc'
+fileName = '/Users/aputhukkudy/Downloads/OCI-Dark/South/PACE_HARP2.20240307T122735.L1C.5km.nc'
 
 # Read the file
 l1c = L1.L1C()
@@ -22,7 +22,7 @@ for key in l1c_dict.keys():
             
 
 # Define the pixel
-pixel = [230,310]
+pixel = [90,210]
 
 # Load the plot class (default instrument is HARP2)
 plt_ = plot.Plot(l1c_dict)
@@ -30,12 +30,12 @@ plt_ = plot.Plot(l1c_dict)
 # set which band to plot
 band = 'Blue'
 plt_.setBand(band)
-'''
+
 # plot RGB in default plate carree projection
 plt_.plotRGB(normFactor=300, saveFig=True, dpi=300)
-
+# %%
 plt_.projectedRGB(normFactor=300, saveFig=True, dpi=300)
-
+#%%
 # plot RGB in with different view angle
 plt_.projectedRGB(var='i', viewAngleIdx=[31, 3, 83], normFactor=300, saveFig=True)
 # plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
@@ -51,7 +51,7 @@ plt_.projectVar('i',  dpi=300)
 # Plotting reflectance at closest viewing angle to -35 degrees
 plt_.reflectance = True
 plt_.projectVar('u',  viewAngle=-35)
-'''
+
 #------------------------------------------------
 #%% plot RGB in Orthographic projection
 # plt_.projectedRGB(proj='Orthographic', normFactor=300, saveFig=True, dpi=300)
@@ -76,7 +76,7 @@ plt_.setInstrument()
 plt_.plotPixelVars(pixel[0], pixel[1], xAxis='view_angles', alpha=0.5, linewidth=0.5, ms=2)
 
 plt_.reflectance = False # switching back to radiance
-plt_.plotPixelVars(pixel[0], pixel[1], xAxis='scattering_angle')
+plt_.plotPixelVars(pixel[0], pixel[1], xAxis='scattering_angle', alpha=0.5, linewidth=0.5, ms=2)
 
 # plot only specific bands and vars
 plt_.vars2plot = ['i',  'dolp']    # Order in the list is the order of plotting
