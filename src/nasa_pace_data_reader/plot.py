@@ -449,17 +449,21 @@ class Plot:
             rgb[:, :, 2] = self.data[var][:,:,viewAngleIdx[0],idxB]
 
         # if normFactor is scalar, divide the RGB by the scalar else divide in a loop
-        if not isinstance(normFactor, int):
+        if not isinstance(normFactor, (int, float)):
             for i in range(3):
-                if isinstance(scale, int):
+                if isinstance(scale, (int, float)):
                     rgb[:, :, i] = rgb[:, :, i]/normFactor[i]*scale
     
         else:
-            if isinstance(scale, int):
-                rgb = rgb/normFactor*scale
-            else:
-                for i in range(3):
-                    rgb[:, :, i] = rgb[:, :, i]/normFactor*scale[i]
+            try:
+                if isinstance(scale, (int, float)):
+                    rgb = rgb/normFactor*scale
+                else:
+                    for i in range(3):
+                        rgb[:, :, i] = rgb[:, :, i]/normFactor*scale[i]
+            except Exception as e:
+                print(f'...Error in normalizing the RGB image {e}')
+                print('normFactor and scale shoulshould be an integer', normFactor)
         # copy the rgb to a new variable
 
         # Plot the RGB image

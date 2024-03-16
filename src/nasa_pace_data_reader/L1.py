@@ -62,7 +62,7 @@ class L1C:
                 self.instrument = 'HARP2'
                 self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith_angle', 
                                 'solar_azimuth_angle', 'sensor_zenith_angle', 'sensor_azimuth_angle',
-                                'height']
+                                'height', 'rotation_angle']
                 
                 self.obsNames = ['i', 'q', 'u', 'dolp'] if not self.experimental else ['i', 'q', 'u', 'dolp', 'sensor1', 'sensor2', 'sensor3']
                 self.wavelengthsStr = 'intensity_wavelength'
@@ -82,7 +82,7 @@ class L1C:
                 self.instrument = 'SPEXone'
                 self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith_angle', 
                                 'solar_azimuth_angle', 'sensor_zenith_angle', 'sensor_azimuth_angle',
-                                'height']
+                                'height', 'rotation_angle']
                 
                 
                 self.obsNames = ['i', 'q', 'u', 'q_over_i', 'u_over_i', 'dolp']

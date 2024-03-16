@@ -116,6 +116,12 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+### v0.0.4.7
+- The bug concerning the `projectRGB()` function has been resolved. Users can now input `float` values for `normFactor` and `scale`, whereas previously only `int` values were permitted. (Issue: https://github.com/aninramesh/nasa-pace-data-reader/issues/2)
+
+### v0.0.4.6
+- Added `rotation_angle` to the variables
+
 ### v0.0.4.4
 - Resolved the projection problem with the composite image for granules near the dateline by including the flag `returnTransitionFlag=True` in the `projectRGB()` function.
 
