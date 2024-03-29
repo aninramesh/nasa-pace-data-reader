@@ -324,6 +324,7 @@ class L1B:
             # read the band angles and wavelengths
             data['view_angles'] = sensor_data.variables['sensor_view_angle'][:]
             data['intensity_wavelength'] = sensor_data.variables[self.wavelengthsStr][:]
+            data['F0'] = sensor_data.variables['intensity_f0'][:]
 
             # FIXME: Polarization based F0 might be needed for SPEXone, since their spectral response is polarization dependent
 

@@ -9,6 +9,7 @@ from scipy import interpolate
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+from cartopy.util import add_cyclic
 
 class Plot:
     def __init__(self, data, instrument='HARP2'):
@@ -389,7 +390,7 @@ class Plot:
             figAll.savefig(location, dpi=self.plotDPI)
 
     def plotRGB(self, var='i', viewAngleIdx=[38, 4, 84],
-                 scale= 1, normFactor=200, returnRGB=False,
+                 scale= 1, normFactor=200, returnRGB=False, autoNorm=False,
                  plot=True, rgb_dolp=False, saveFig=False, **kwargs):
         """Plot the RGB image of the instrument.
 
@@ -448,22 +449,35 @@ class Plot:
             rgb[:, :, 1] = self.data[var][:,:,viewAngleIdx[0],idxG]
             rgb[:, :, 2] = self.data[var][:,:,viewAngleIdx[0],idxB]
 
-        # if normFactor is scalar, divide the RGB by the scalar else divide in a loop
-        if not isinstance(normFactor, (int, float)):
-            for i in range(3):
-                if isinstance(scale, (int, float)):
-                    rgb[:, :, i] = rgb[:, :, i]/normFactor[i]*scale
-    
+        # Normalize the RGB image
+        if autoNorm:
+
+            # calculate the normFactor for each band
+            normFactor = np.zeros(3)
+
+            # normalize the RGB to 0-1
+            for rgbIdx in range(3):
+                # normalize the RGB to 0-1 using nanmin and nanmax
+                iMin = 10
+                iMax = np.nanpercentile(rgb[:, :, rgbIdx], 99)
+                rgb[:, :, rgbIdx] = (rgb[:, :, rgbIdx])/(iMax-iMin)
         else:
-            try:
-                if isinstance(scale, (int, float)):
-                    rgb = rgb/normFactor*scale
-                else:
-                    for i in range(3):
-                        rgb[:, :, i] = rgb[:, :, i]/normFactor*scale[i]
-            except Exception as e:
-                print(f'...Error in normalizing the RGB image {e}')
-                print('normFactor and scale shoulshould be an integer', normFactor)
+            # if normFactor is scalar, divide the RGB by the scalar else divide in a loop
+            if not isinstance(normFactor, (int, float)):
+                for i in range(3):
+                    if isinstance(scale, (int, float)):
+                        rgb[:, :, i] = rgb[:, :, i]/normFactor[i]*scale
+        
+            else:
+                try:
+                    if isinstance(scale, (int, float)):
+                        rgb = rgb/normFactor*scale
+                    else:
+                        for i in range(3):
+                            rgb[:, :, i] = rgb[:, :, i]/normFactor*scale[i]
+                except Exception as e:
+                    print(f'...Error in normalizing the RGB image {e}')
+                    print('normFactor and scale shoulshould be an integer', normFactor)
         # copy the rgb to a new variable
 
         # Plot the RGB image
@@ -485,6 +499,7 @@ class Plot:
                    proj='PlateCarree', colorbar=True, varAlpha=1,
                    stockImage=False, level='L1C',idx_=1, saveFig=False,
                    lakes=True, rivers=False, figsize_=None, ax=None, dpi=300,
+                   highResStockImage=False,
                    **kwargs):
         """ Project a single variable of the data to the earth projection using Cartopy.
         
@@ -528,6 +543,13 @@ class Plot:
         lon_center = (lon.max() + lon.min()) / 2
         lat_center = (lat.max() + lat.min()) / 2
 
+        # find if the longitude has a transition from -180 to 180
+        transitionFlag = False
+        if np.abs(lon.max() - lon.min()) > 180 :
+            transitionFlag = True
+            # use sine and cosine to find the center of the projection
+            lon_center, ln_min, ln_max = self.average_longitude(lon.ravel())
+
         # default kwargs
         kwargs = dict()
         kwargs['linewidth'] = 1
@@ -553,7 +575,10 @@ class Plot:
         
         if proj == 'PlateCarree':
             if ax is None:
-                ax = plt.axes(projection=ccrs.PlateCarree())
+                if transitionFlag:
+                    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=lon_center))
+                else:
+                    ax = plt.axes(projection=ccrs.PlateCarree())
             else:
                 ax = ax
             # Set up gridlines and labels
@@ -574,7 +599,10 @@ class Plot:
         ax.coastlines()
         ax.set_global()
         ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
-        ax.stock_img() if stockImage else ax.add_feature(cfeature.OCEAN, zorder=0) ; ax.add_feature(cfeature.LAND, zorder=0, edgecolor='black')
+        if not highResStockImage:
+            ax.stock_img() if stockImage else ax.add_feature(cfeature.OCEAN, zorder=0) ; ax.add_feature(cfeature.LAND, zorder=0, edgecolor='black')
+        else:
+            ax.background_img(name='NaturalEarthRelief', resolution='high')
         # Add coastline feature
         ax.add_feature(cfeature.COASTLINE, edgecolor='black', linewidth=1, alpha=0.5)
         ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=1, alpha=0.5) if lakes else None
@@ -650,10 +678,11 @@ class Plot:
     def projectedRGB(self, rgb=None, scale=1, ax=None, fig=None,
                      var='i', viewAngleIdx=[36, 4, 84],
                      normFactor=200, proj='PlateCarree',
-                     saveFig=False, noShow=False, rivers=False, lakes=True,
+                     saveFig=False, noShow=False, rivers=False, lakes=False,
                      rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
                      returnRGB=False, lon_0=None, lat_0=None, black_background=True,
-                     proj_size=None, returnTransitionFlag=False, **kwargs):
+                     proj_size=None, returnTransitionFlag=False, highResStockImage=False,
+                     **kwargs):
         """Plot the projected RGB image of the instrument using Cartopy.
 
         Args:
@@ -690,12 +719,7 @@ class Plot:
         lat = self.data['latitude']
         lon = self.data['longitude']
 
-        proj_size=(900,400) if proj_size is None else proj_size
-
-        rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, proj_size=proj_size) #Created projection image
-        
-        # Plotting in the axes
-         # find if the longitude has a transition from -180 to 180
+        # find if the longitude has a transition from -180 to 180
         transitionFlag = False
         if np.abs(lon.max() - lon.min()) > 180 and lon_0 is None:
             transitionFlag = True
@@ -704,16 +728,17 @@ class Plot:
         else:
             lon_center = (lon.max() + lon.min()) / 2 if lon_0 is None else lon_0
         lat_center = (lat.max() + lat.min()) / 2 if lat_0 is None else lat_0
-        print(f'...Centering the projection at lon:{lon_center}, lat:{lat_center}')
+        print(f'...Centering the projection at lon:{round(lon_center, 3)}, lat:{round(lat_center,3)}')
 
-        # Create a border of the images 
-        # if transitionFlag:
-        #     # if ln_max > 0:
-        #     #     rgb_extent = [ln_max, ln_min,  nlat.min(), nlat.max()]
-        #     # elif ln_min < 0:
-        #     rgb_extent = [180-ln_max, -(ln_min+180), nlat.min(), nlat.max()]
-        # else: 
-        rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]
+        proj_size=(900,400) if proj_size is None else proj_size
+
+        if transitionFlag:
+            # Interpolate the RGB values onto a regular grid via function applying scale factor in advance
+            rgb_new, rgb_extent = self.GridRGB(lon, lat, dateline=True, proj_size=proj_size)
+
+        else:
+            rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, proj_size=proj_size) #Created projection image
+            rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]        
 
         # Prepare figure and axes
         if ax is None and proj.lower() != 'none':
@@ -735,7 +760,10 @@ class Plot:
                 ax = plt.axes(projection=ccrs.Orthographic(lon_center, lat_center))
             else:
                 ax = ax
-            ax.stock_img()
+            if highResStockImage:
+                ax.background_img(name='BlueMarble', resolution='high')
+            else:
+                ax.stock_img()
             ax.set_global()
 
             if black_background:
@@ -747,10 +775,8 @@ class Plot:
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
 
             # Display the image in the projection
-            if transitionFlag:
-                ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(central_longitude=lon_center), **kwargs)
-            else:
-                ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
+            ax.imshow(rgb_new, origin='lower',  extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
+            ax.add_feature(cfeature.COASTLINE, edgecolor='black', linewidth=0.2, alpha=0.5)
 
         elif proj == 'PlateCarree':
             # Create a PlateCarree projection
@@ -766,7 +792,7 @@ class Plot:
             gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='white', alpha=0.2, linestyle='--')
             gl.xlabels_top = False
             gl.ylabels_right = False
-            gl.xlocator = mticker.FixedLocator(np.around(np.linspace(np.nanmin(nlon),np.nanmax(nlon),6),2))
+            gl.xlocator = mticker.FixedLocator(np.around(np.linspace(rgb_extent[0],rgb_extent[1],6),2))
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
 
@@ -774,10 +800,7 @@ class Plot:
             rgb_new = np.ma.masked_where(rgb_new == 0, rgb_new)
             
             # Display the image in the projection
-            if transitionFlag:
-                ax.imshow(rgb_new, origin='lower', extent=rgb_extent, transform=ccrs.PlateCarree(central_longitude=lon_center), **kwargs) 
-            else:
-                ax.imshow(rgb_new, origin='lower', extent=rgb_extent, **kwargs)
+            ax.imshow(rgb_new, origin='lower', extent=rgb_extent, **kwargs)
             # Add coastline feature
             ax.add_feature(cfeature.COASTLINE, edgecolor='black', linewidth=1, alpha=0.5)
             ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=1, alpha=0.5) if lakes else None
@@ -819,7 +842,10 @@ class Plot:
                 
                 return rgb_new, rgb_extent
             else:
-                return fig, ax, rgb_new, rgb_extent
+                if returnTransitionFlag:
+                    return fig, ax, rgb_new, rgb_extent, transitionFlag, lon_center, lat_center
+                else:
+                    return fig, ax, rgb_new, rgb_extent
 
 
     def meshgridRGB(self, LON, LAT, proj_size=(900,400), return_mapdata=False):
@@ -898,7 +924,7 @@ class Plot:
         lon0 = 1/2.*(mn_lon+mx_lon)
 
         # Set the size of the new projected image
-        x_new = proj_size[0]
+        x_new = proj_size[1]
         y_new = proj_size[0]
 
         # Create 1D arrays of evenly spaced values between the min and max longitude and latitude
@@ -912,12 +938,6 @@ class Plot:
         newrr = interpolate.griddata( (LON.ravel(),LAT.ravel()), rr.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
         newgg = interpolate.griddata( (LON.ravel(),LAT.ravel()), gg.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
         newbb = interpolate.griddata( (LON.ravel(),LAT.ravel()), bb.ravel(), (newxx.ravel(), newyy.ravel()), method='nearest',fill_value=0 )
-
-        # if the transitionFlag is True, convert the longitude back to degrees
-        # if transitionFlag:
-        #     newrr = np.degrees(np.arccos(newrr))
-        #     newgg = np.degrees(np.arccos(newgg))
-        #     newbb = np.degrees(np.arccos(newbb))
 
         # Reshape the color channels to the size of the new image
         newrr = newrr.reshape(x_new,y_new)
@@ -948,27 +968,110 @@ class Plot:
         rgb_proj[:,:,1] = newgg
         rgb_proj[:,:,2] = newbb
 
-        # if transitionFlag is True, convert the longitude back to degrees
-        # if transitionFlag:
-        #     lon0 = np.degrees(np.arcsin(lon0))
-        #     lon0 =  180-lon0 if lon0 > 0 else lon0
-        #     lat0 = np.degrees(np.arcsin(lat0))
-        #     mx_lat = np.degrees(np.arcsin(mx_lat))
-        #     mn_lat = np.degrees(np.arcsin(mn_lat))
-        #     mx_lon = np.degrees(np.arcsin(mx_lon))
-        #     mx_lon =  180-mx_lon if mx_lon > 0 else mx_lon
-        #     mn_lon = np.degrees(np.arcsin(mn_lon))
-        #     mn_lon =  180-mn_lon if mn_lon > 0 else mn_lon
-        #     xx = np.degrees(np.arcsin(xx))
-        #     # modify the longitude to -180 to 180 if +ve 180-xx, if -ve -180-xx, xx is  1D array
-        #     xx = np.where(xx < 0, -180 - xx, 180 - xx)
-        #     yy = np.degrees(np.arcsin(yy))
-
         # If return_mapdata is True, return the map data
         if return_mapdata:
             return rgb_proj, (lon0,lat0), ((mn_lon,mx_lon),(mn_lat,mx_lat))
         else:
             return rgb_proj,xx,yy
+        
+    #------------------------------------------------------------------------------------------
+    # Function to regrid RGB data
+    # Noah Sienkiewicz created this function and has been modified by Anin to fit with the library
+    #------------------------------------------------------------------------------------------
+    def GridRGB(self, lon, lat, dateline=True, proj_size=(900,400)):
+        """
+        Interpolates RGB values onto a grid regularly spaced grid by longitude and latitude coordinates.
+
+        Args:
+            self (object): The instance of the class.
+            lon (ndarray): 2-D array of longitude values from L1C.
+            lat (ndarray): 2-D array of latitude values from L1C.
+            dateline (bool, optional): Specifies whether the dateline is present in the longitude values. 
+                Defaults to True.
+
+        Returns:
+            tuple: A rgb image array containing the interpolated RGB values as a 3-D array and the extent of the grid for imshow.
+
+        """
+        # Create a 3D array to store the RGB data
+        tmp_r = self.rgb[:,:,0]
+        tmp_g = self.rgb[:,:,1]
+        tmp_b = self.rgb[:,:,2]
+        
+        if dateline:
+            #When the dateline is bisecting the lon grid, we need to adjust the grid to be continuous
+            #This means separating it into east and west halves according to the dateline. On the east
+            #half where it's negative, shift all values by 360 to make them continuous with the west
+            #half
+            tmp_lon = np.unique(lon)
+            west_lon = tmp_lon[tmp_lon>0]
+            east_lon = tmp_lon[tmp_lon<0]
+            lon_min = np.min(west_lon)
+            lon_max = np.max(east_lon)
+            lon_min = lon_min
+            lon_max = 360+lon_max
+        else: #if no datetline, do nothing special
+            tmp_lon = np.unique(lon)
+            lon_min = np.min(lon)
+            lon_max = np.max(lat)
+
+        lat_min = np.min(lat)
+        lat_max = np.max(lat)
+
+        # Imshow doesn't like arrays with irregularly shaped/spaced pixels. It tries to create
+        # a simple rectangular box of regular squares, but because of our projection, we're
+        # making some god awful shape. To fix that, I create a regular grid with the same start/end
+        # points as the original grid. I create it as the same size as the original grid, but it doesn't
+        # have to be. Using nearest neighbor interpolation means there's no real reason to go finer
+        # but I didn't really play with it much to check
+        new_lon, new_lat = np.meshgrid(np.linspace(lon_min,lon_max,proj_size[1]),
+                                    np.linspace(lat_min,lat_max,proj_size[0]))
+        
+        tmp_lon = lon.flatten() #flatten the arrays for regridding
+        if dateline: #if the dateline is present, again shift the values to be continuous
+            tmp_lon[tmp_lon<0] = 360+tmp_lon[tmp_lon<0]
+        else: #else do nothing
+            tmp_lon = tmp_lon
+        points = np.vstack([tmp_lon, lat.flatten()]).T #combine the lon and lat arrays into a 2D array according griddate spec
+        new_points = np.vstack([new_lon.flatten(), new_lat.flatten()]).T #same for the new grid
+        
+        # Perform the interpolation RED
+        to_grid = np.copy(tmp_r) #get a copy of the input red image data
+        # Because we're using nearest neighbor, if I don't line the edges with 0, then those values get smeared
+        # from the true image edge to the edge of the grid. We could mask them later with the alpha channel, but
+        # for simplicity I use 0 values to help define the alpha mask, so it's not really worth trying
+        to_grid[0,:] = 0  # top layer of the grid
+        to_grid[-1,:] = 0 # bottom
+        values = to_grid.flatten()  # replace 'values' with your image data array
+        new_values = interpolate.griddata(points, values, new_points, method='nearest') #do interpolation (takes a few seconds)
+        # Reshape the interpolated values to match the shape of the new grid
+        new_r = new_values.reshape(new_lon.shape) #reshape result back to meshgrid expectations
+
+        # Perform the interpolation GRN (same as red)
+        to_grid = np.copy(tmp_g)
+        to_grid[0,:] = 0
+        to_grid[-1,:] = 0
+        values = to_grid.flatten()  # replace 'values' with your data array
+        new_values = interpolate.griddata(points, values, new_points, method='nearest')
+        # Reshape the interpolated values to match the shape of the new grid
+        new_g = new_values.reshape(new_lon.shape)
+
+        # Perform the interpolation BLU (same as red)
+        to_grid = np.copy(tmp_b)
+        to_grid[0,:] = 0
+        to_grid[-1,:] = 0
+        values = to_grid.flatten()  # replace 'values' with your data array
+        new_values = interpolate.griddata(points, values, new_points, method='nearest')
+        # Reshape the interpolated values to match the shape of the new grid
+        new_b = new_values.reshape(new_lon.shape)
+
+        tmp_alpha = np.ones_like(new_b,dtype='float32')*1 #create an alpha channel (opacity) that is 1 (fully opaque) everywhere
+        new_rgb = np.stack([new_r, new_g, new_b ,tmp_alpha], axis=-1) #stack into a new RGB on the last axis
+
+        new_rgb[new_rgb[:,:,0] <= 0,-1] = 0 #set the alpha channel to 0 where the RGB is invalid making it full transparent
+        ext = [lon_min, lon_max, lat_min, lat_max] #package the edges of the new retangular grid to give to imshow
+
+        return new_rgb, ext
         
     def average_longitude(self, longitudes):
         # Convert longitudes to radians
@@ -998,28 +1101,6 @@ class Plot:
         mean_longitude = (mean_longitude + 180) % 360 - 180
 
         return mean_longitude, min_lon, max_lon
-        
-    #---------------------------------------------------
-    # Other functions
-    #---------------------------------------------------
-    # def cosine_conversion(longitude_matrix, direction="forward"):
-    #     """Converts longitudes in a 2D matrix to cosines or back to degrees.
-
-    #     Args:
-    #         longitude_matrix: A 2D NumPy array of longitudes in degrees.
-    #         direction:  "forward" for longitude to cosine, "inverse" for cosine to longitude.
-
-    #     Returns:
-    #         A NumPy array of the converted values.
-    #     """
-
-    #     if direction == "forward":
-    #         return np.cos(np.radians(longitude_matrix))
-    #     elif direction == "inverse":
-    #         angles_radians = np.arccos(longitude_matrix)
-    #         return np.degrees(angles_radians)
-    #     else:
-    #         raise ValueError("Invalid direction. Choose 'forward' or 'inverse'.")
         
 #---------------------------------------------------
 # End of the class Plot

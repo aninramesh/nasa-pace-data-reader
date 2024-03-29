@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Downloads/03-07/PACE_HARP2.20240307T204917.L1C.5km.nc'
+fileName = '/Users/aputhukkudy/Downloads/03-28/PACE_HARP2.20240323T033227.L1C.5km.nc'
 
 # Read the file
 l1c = L1.L1C()
@@ -41,7 +41,9 @@ plt_.projectedRGB(var='i', viewAngleIdx=[31, 3, 83], normFactor=300, saveFig=Tru
 # plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
 
 #%% plot RGB in Orthographic projection
-plt_.projectedRGB(proj='Orthographic', normFactor=300, saveFig=True, dpi=300)
+plt_.projectedRGB(proj='Orthographic',  normFactor=300, saveFig=True, dpi=300)
+
+plt_.projectedRGB(proj='Orthographic', viewAngleIdx=[31, 73, 83], scale=[0.85, 1.4, 1], normFactor=300, saveFig=True, dpi=300)
 
 # plot one variable in a specific projection at closest viewing angle to nadir
 band = 'nIR'

@@ -116,6 +116,12 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+### v0.0.4.9
+- Fixed the projection issue at -180 to 180 longitude transition line
+
+### v0.0.4.8
+- Added option to plot `highRes` blue marble
+
 ### v0.0.4.7
 - The bug concerning the `projectRGB()` function has been resolved. Users can now input `float` values for `normFactor` and `scale`, whereas previously only `int` values were permitted. (Issue: https://github.com/aninramesh/nasa-pace-data-reader/issues/2)
 
