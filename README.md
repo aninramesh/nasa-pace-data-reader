@@ -116,7 +116,7 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
-### v0.0.4.9
+### v0.0.4.10
 - Fixed the projection issue at -180 to 180 longitude transition line
 
 ### v0.0.4.8

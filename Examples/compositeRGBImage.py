@@ -58,7 +58,7 @@ def L1C_composite(args, rgb_, viewIndex=[36, 4, 84]):
     l1c_files.sort()
 
     # projection size
-    proj_size = (1200, 600)
+    proj_size = (600, 300)
 
     # which variable to plot
     if args.dolp:
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     # args.dpi = 600
     # args.label = False
     # args.tag = 'test'
-    # args.viewIndex = 5
+    # args.viewIndex = 2
     # args.dolp = False
 
     # viewIndex
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
     #%% plot images
     # plot the composite image in robinson projection
-    fig = plt.figure(figsize=(24, 12))
+    fig = plt.figure(figsize=(18, 9))
     axm = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson(central_longitude=0))
     fig.patch.set_facecolor('black')
     # set the extent to global
@@ -235,6 +235,8 @@ if __name__ == "__main__":
 
     # add the RGB image
     for key in rgb_['rgb_new'].keys():
+
+        print(key)
 
         # clon = 180 if rgb_['dateline'][key] else 0
         # mask the black pane

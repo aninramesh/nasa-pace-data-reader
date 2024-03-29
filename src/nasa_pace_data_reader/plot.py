@@ -737,6 +737,7 @@ class Plot:
             rgb_new, rgb_extent = self.GridRGB(lon, lat, dateline=True, proj_size=proj_size)
 
         else:
+            # rgb_new, rgb_extent = self.GridRGB(lon, lat, dateline=False, proj_size=proj_size)
             rgb_new, nlon, nlat = self.meshgridRGB(lon, lat, return_mapdata=False, proj_size=proj_size) #Created projection image
             rgb_extent = [nlon.min(), nlon.max(), nlat.min(), nlat.max()]        
 
@@ -924,7 +925,7 @@ class Plot:
         lon0 = 1/2.*(mn_lon+mx_lon)
 
         # Set the size of the new projected image
-        x_new = proj_size[1]
+        x_new = proj_size[0]
         y_new = proj_size[0]
 
         # Create 1D arrays of evenly spaced values between the min and max longitude and latitude
