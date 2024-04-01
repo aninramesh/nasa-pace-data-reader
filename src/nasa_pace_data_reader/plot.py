@@ -9,7 +9,6 @@ from scipy import interpolate
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-from cartopy.util import add_cyclic
 
 class Plot:
     def __init__(self, data, instrument='HARP2'):
@@ -679,7 +678,7 @@ class Plot:
                      var='i', viewAngleIdx=[36, 4, 84],
                      normFactor=200, proj='PlateCarree',
                      saveFig=False, noShow=False, rivers=False, lakes=False,
-                     rgb_dolp=False, figsize=None, savePath=None, dpi=300, setTitle=True,
+                     rgb_dolp=False, figsize=None, savePath=None, dpi=None, setTitle=True,
                      returnRGB=False, lon_0=None, lat_0=None, black_background=True,
                      proj_size=None, returnTransitionFlag=False, highResStockImage=False,
                      **kwargs):
@@ -699,7 +698,7 @@ class Plot:
             None
         """
         assert proj.lower() in ['platecarree', 'orthographic', 'none'], 'Invalid projection method currently only PlateCarree and Orthographic are supported'
-
+        self.plotDPI = dpi if dpi is not None else self.plotDPI
         if self.instrument == 'OCI':
             if np.nanmean(self.data['latitude']) > 0:
                 viewAngleIdx = [1]
@@ -749,6 +748,8 @@ class Plot:
                 # print('...Setting the figure size to (4, 5)')
             else:
                 if fig is None:
+                    print(f'...Creating a new figure with figsize {figsize}')
+                    print(f'...Setting the figure dpi to {self.plotDPI}')
                     fig = plt.figure(figsize=figsize, dpi=self.plotDPI)
                 else:
                     fig = fig
