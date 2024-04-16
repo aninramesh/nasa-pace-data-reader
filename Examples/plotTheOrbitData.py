@@ -5,7 +5,11 @@
 # Load the required libraries
 from nasa_pace_data_reader import L1, plot
 from datetime import datetime
-import os,sys, pickle, argparse, gc
+import os
+import sys
+import pickle
+import argparse
+import gc
 from pathlib import Path
 
 # plot libraries
@@ -62,7 +66,7 @@ def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
             rgb_['rgb_extent'][l1c_file], \
                 rgb_['dateline'][l1c_file], rgb_['lon_center'][l1c_file], \
                      rgb_['lat_center'][l1c_file] = plt_.projectedRGB(proj='Orthographic', viewAngleIdx=viewIndex,
-                                                            normFactor=normFactor, scale=scale_, saveFig=True, returnRGB=True,
+                                                            normFactor=normFactor, scale=scale_, saveFig=True, returnRGB=True, # type: ignore
                                                             figsize=(6, 6), noShow=True, savePath=args.save_path,
                                                             lat_0=lat_0, lon_0=lon_0, proj_size=(1200, 600), highResStockImage=True,
                                                             returnTransitionFlag=True)

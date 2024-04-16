@@ -6,7 +6,8 @@ from nasa_pace_data_reader import L1, plot
 
 import argparse
 from datetime import datetime
-import os,sys
+import os
+import sys
 from pathlib import Path
 from matplotlib import pyplot as plt
 import cartopy.crs as ccrs
@@ -39,24 +40,27 @@ def plotL1C(args):
     # plot RGB in with different view angle
     ax2 = fig_.add_subplot(222, projection=ccrs.PlateCarree())
     plt_.projectedRGB(var='i', viewAngleIdx=[36, 73, 84], normFactor=args.normFactor,
-                       scale=[0.85, 1.4, 1], ax=ax2, noShow=True, setTitle=False)
+                       scale=[0.85, 1.4, 1], ax=ax2, noShow=True, setTitle=False) # type: ignore
     # plt_.projectedRGB(var='q', viewAngleIdx=[31, 3, 83], scale=2, normFactor=100, saveFig=True)
     ax2.set_title('Intensity\n(R=670 nm, G=870 nm, B=440 nm)')
 
     # project dolp
     ax3 = fig_.add_subplot(223, projection=ccrs.PlateCarree())
     plt_.projectedRGB(var='dolp', viewAngleIdx=[31, 3, 83], normFactor=50,
-                       scale=[0.8, 1, 1], ax=ax3, rgb_dolp=True, noShow=True, setTitle=False)
+                       scale=[0.8, 1, 1], ax=ax3, rgb_dolp=True, noShow=True, setTitle=False) # type: ignore
     ax3.set_title('Polarized Radiance\n(R=670 nm, G=550 nm, B=440 nm)')
 
     # plot one variable in a specific projection at closest viewing angle to nadir
     ax4 = fig_.add_subplot(224, projection=ccrs.PlateCarree())
-    plt_.projectedRGB(var='dolp', normFactor=50, scale=[0.8, 1, 1], ax=ax4,
+    plt_.projectedRGB(var='dolp', normFactor=50, scale=[0.8, 1, 1], ax=ax4, # type: ignore
                        rgb_dolp=True, noShow=True, setTitle=False)
     ax4.set_title('Polarized Radiance\n(R=670 nm, G=870 nm, B=440 nm)')
 
-    fig_.suptitle(f'HARP2 L1C Quicklook\n {l1c_dict["date_time"]} UTC')
-    
+    if l1c_dict is not None:
+        fig_.suptitle(f'HARP2 L1C Quicklook\n {l1c_dict["date_time"]} UTC')
+    else:
+        fig_.suptitle('HARP2 L1C Quicklook')
+
     try:
         fig_.savefig(args.save_path, dpi=args.dpi)
         print(f'Quicklook saved to {args.save_path}')

@@ -1,15 +1,15 @@
 from nasa_pace_data_reader import L1, L2, plot
 import copy
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 # suppress warnings
 import warnings
 warnings.filterwarnings("ignore")
 
 # location of the L2 file
-fileName = '/Users/aputhukkudy/Downloads/PACE/L2/2024-03-11T11_46_22_created_2024-03-27T08-30.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE/L2/PACE_HARP2.20240311T065121.L2-AER-GRASP-v01p1.nc'
 
 # l1c file location
-l1c_file = '/Users/aputhukkudy/Downloads/PACE/03-11/hipp382/PACE_HARP2.20240311T114622.L1C.nc'
+l1c_file = '/Users/aputhukkudy/Downloads/PACE/03-11/hipp373.aux.2024.6/PACE_HARP2.20240311T065121.L1C.5km.nc'
 
 # Read the L1C file
 l1c = L1.L1C()
@@ -34,22 +34,24 @@ l2_dict = l2.read(fileName)
 
 # chi2 filtering filter chi2 values greater than chiMax or chiMin
 chiMax = 10
-chiMin = 0.2
-l2_chi2_mask = (l2_dict['chi2'] > chiMax) | (l2_dict['chi2'] < chiMin)
+chiMin = 0.05
+l2_chi2_mask = None
+if l2_dict is not None:
+    l2_chi2_mask = (l2_dict['chi2'] > chiMax) | (l2_dict['chi2'] < chiMin)
 
-# plot the aot data
-l2.projectVar('aot', dpi=dpi, vmax=2, vmin=0, cmap=cmap,
+#%% plot the aot data
+l2.projectVar('aot', dpi=dpi, vmax=1, vmin=0, cmap=cmap,
               chi2Mask=l2_chi2_mask,
-              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
-              black_background=True, horizontalColorbar=True, limitTriangle=[0,1])
-del fig_, ax_
-fig_, ax_ = copy.deepcopy((fig_1, ax_1))
-l2.projectVar('aot_fine', dpi=dpi, vmax=2, vmin=0, cmap=cmap, chi2Mask=l2_chi2_mask,
               saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
               black_background=True, limitTriangle=[0,1])
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
-l2.projectVar('aot_coarse', dpi=dpi, vmax=2, vmin=0, cmap=cmap, chi2Mask=l2_chi2_mask,
+l2.projectVar('aot_fine', dpi=dpi, vmax=1, vmin=0, cmap=cmap, chi2Mask=l2_chi2_mask,
+              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
+              black_background=True, limitTriangle=[0,1])
+del fig_, ax_
+fig_, ax_ = copy.deepcopy((fig_1, ax_1))
+l2.projectVar('aot_coarse', dpi=dpi, vmax=1, vmin=0, cmap=cmap, chi2Mask=l2_chi2_mask,
               saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
               black_background=True, limitTriangle=[0,1])
 del fig_, ax_
@@ -65,7 +67,7 @@ l2.projectVar('ssa_total', wavelength=670, dpi=dpi, vmax=1, vmin=0.85, cmap=cmap
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
 l2.projectVar('ssa_total', wavelength=870, dpi=dpi, vmax=1, vmin=0.85, cmap=cmap, chi2Mask=l2_chi2_mask,
-              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
+              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True, limitTriangle=[1,0],
               black_background=True)
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
@@ -76,18 +78,23 @@ del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
 
 # plot the 'chi2' variable
-l2.projectVar('reff_coarse', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask,
-              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
+l2.projectVar('reff_coarse', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, vmin=0.5, vmax=3,
+              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True, limitTriangle=[0,1],
               black_background=True)
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
-l2.projectVar('reff_fine', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask,
-              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
-              black_background=True)
+l2.projectVar('reff_fine', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, vmin=0.08, vmax=0.2,
+              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True, limitTriangle=[1,1],
+              black_background=True, )
 l2.projectVar('vd', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask)
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
-l2.projectVar('mr', wavelength=550, dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask,
+l2.projectVar('mr', wavelength=550, dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, vmin=1.33, vmax=1.7,
+              saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True, 
+              black_background=True,)
+del fig_, ax_
+fig_, ax_ = copy.deepcopy((fig_1, ax_1))
+l2.projectVar('mi', wavelength=550, dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask,
               saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
-              black_background=True)
-l2.projectVar('chi2', dpi=dpi, vmax = chiMax, cmap=cmap)
+              black_background=True,)
+l2.projectVar('chi2', dpi=dpi, vmax = 6, cmap=cmap)

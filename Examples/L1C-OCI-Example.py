@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Define the location of the file
-fileOCI = '/Users/aputhukkudy/Downloads/OCI-Dark/South/PACE_OCI.20240307T054913.L1C.5km.nc'
+fileOCI = '/Users/aputhukkudy/Downloads/PACE/04-08/PACE_OCI.20240408T033824.L1C.5km.nc'
 
 # Read the file
 l1c = L1.L1C(instrument='OCI')
@@ -13,8 +13,8 @@ l1c_dict = l1c.read(fileOCI)
 
 #--------------------------------------------------------------
 # Print the keys and the shape of the data (Just to see what is in the file)
-l1c_dict.keys()
-for key in l1c_dict.keys():
+keys = l1c_dict.keys()
+for key in keys:
     if key != '_units':
         try:
             print('{:<24}:{}'.format(key, l1c_dict[key].shape))

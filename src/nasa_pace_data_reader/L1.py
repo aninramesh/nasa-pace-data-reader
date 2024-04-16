@@ -1,5 +1,5 @@
 import os
-from netCDF4 import Dataset
+from netCDF4 import Dataset # type: ignore
 import datetime
 
 
@@ -89,11 +89,13 @@ class L1C:
                 self.wavelengthsStr = 'intensity_wavelength'
                 self.F0Str = 'intensity_f0'
                 self.VAStr = 'sensor_view_angle'
+                self.PolWav = 'polarization_wavelength'
+                self.PolF0 = 'polarization_f0'
 
             case 'oci':
                 self.instrument = 'OCI'
-                self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith', 
-                                'solar_azimuth', 'sensor_zenith', 'sensor_azimuth',
+                self.geoNames = ['latitude', 'longitude', 'scattering_angle', 'solar_zenith_angle', 
+                                'solar_azimuth_angle', 'sensor_zenith_angle', 'sensor_azimuth_angle',
                                 'height']
                 
                 self.obsNames = ['i']
@@ -184,8 +186,10 @@ class L1C:
             data['view_angles'] = sensor_data.variables[self.VAStr][:]
             data['intensity_wavelength'] = sensor_data.variables[self.wavelengthsStr][:]
 
-            # FIXME: Polarization based F0 might be needed for SPEXone, since their spectral response is polarization dependent
-
+            # Polarization based F0 might be needed for SPEXone, since their spectral response is polarization dependent
+            if self.instrument == 'SPEXone':
+                data['polarization_wavelength'] = sensor_data.variables[self.PolWav][:]
+                data['polarization_f0'] = sensor_data.variables[self.PolF0][:]
 
             # close the netCDF file
             dataNC.close()

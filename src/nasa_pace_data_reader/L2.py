@@ -213,11 +213,11 @@ class L2:
             fig.patch.set_facecolor('black')
             # set the font color to white
             plt.rcParams['text.color'] = 'tan'
-            plt.rcParams['axes.labelcolor'] = 'tan'
+            plt.rcParams['axes.labelcolor'] = 'grey'
             plt.rcParams['xtick.color'] = 'tan'
             plt.rcParams['ytick.color'] = 'tan'
             # title font color
-            plt.rcParams['axes.titlecolor'] = 'tan'
+            plt.rcParams['axes.titlecolor'] = 'white'
             plt.rcParams['axes.edgecolor'] = 'tan'
             plt.rcParams['axes.facecolor'] = 'tan'
 
@@ -240,15 +240,17 @@ class L2:
         else:
             im = ax.pcolormesh(lon, lat, data, transform=ccrs.PlateCarree(), **kwargs)
         divider = make_axes_locatable(ax)
-        # if horizontalColorbar:
-        ax_cb = divider.new_horizontal(size="5%", pad=0.1, axes_class=plt.Axes)
-        # else:
-        # ax_cb = divider.new_vertical(size="5%", pad=0.9, axes_class=plt.Axes)
+        if horizontalColorbar:
+            ax_cb = divider.new_vertical(size="5%", pad=0.65, axes_class=plt.Axes)
+        else:
+            ax_cb = divider.new_horizontal(size="5%", pad=0.1, axes_class=plt.Axes)
+
         fig.add_axes(ax_cb)
 
         # add horizontal colorbar
         orientation = 'vertical'
         if horizontalColorbar:
+            orientation = 'horizontal'
             # vmax in kwargs then end of the colorbar with a triangle
             if 'vmax' in kwargs or 'vmin' in kwargs:
                 # add a triangle at the end of the colorbar if vmax and vmin are provided
@@ -277,18 +279,18 @@ class L2:
         if var not in ['chi2', 'n_iter', 'quality_flag']:
             plt.colorbar(im, cax=ax_cb, orientation=orientation).set_label(self.var_units[var])
 
-        # add gridlines and lat lon labels
-        if not noAxisTicks and ax is not None:
-            gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
-                            linewidth=0.2, color='gray', alpha=0.2, linestyle='--')
-            gl.xlabels_top = False
-            gl.ylabels_right = False
-            gl.xformatter = LONGITUDE_FORMATTER
-            gl.yformatter = LATITUDE_FORMATTER
-            gl.xlabel_style = {'size': 8}
-            gl.ylabel_style = {'size': 8}
-            gl.xlabel_text = True
-            gl.ylabel_text = True
+        # # add gridlines and lat lon labels
+        # if not noAxisTicks and ax is not None:
+        #     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+        #                     linewidth=0.2, color='gray', alpha=0.2, linestyle='--')
+        #     gl.xlabels_top = False
+        #     gl.ylabels_right = False
+        #     gl.xformatter = LONGITUDE_FORMATTER
+        #     gl.yformatter = LATITUDE_FORMATTER
+        #     gl.xlabel_style = {'size': 8}
+        #     gl.ylabel_style = {'size': 8}
+        #     gl.xlabel_text = True
+        #     gl.ylabel_text = True
 
         if black_background:
             #reset the font color

@@ -162,3 +162,5 @@ Examples/nasa_pace_data_reader
 Examples/o*.txt
 Examples/i*.txt
 
+Examples/*.png
+Examples/1146/*

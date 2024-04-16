@@ -116,6 +116,12 @@ plt_.projectVar('u',  viewAngle=-35)
 
 ## Change Log:
 ---
+### v0.0.5.0
+- Apply this version for data from OBDAAC that is after April 11th, 2024.
+- Updated OCI L1C variable names to ensure consistency with all other instruments.
+- Resolved the projection issue with SPEXOne data.
+- Option to read HARP2 (GRASP-Anin) L2 product has been added. See `Examples/L2-HARP2-GRASP-example.py` to understand how it can be used.
+
 ### v0.0.4.10
 - Fixed the projection issue at -180 to 180 longitude transition line
 
