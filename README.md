@@ -177,5 +177,3 @@ plt_.projectVar('u',  viewAngle=-35)
 
 - Added the ability to plot projected RGB using `cartopy`.
 - Removed `Basemap` library from the dependencies
-
-
