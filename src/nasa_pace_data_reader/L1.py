@@ -14,7 +14,7 @@ class L1C:
         self.experimental = False
         if instrument.lower() == 'harp2':
             self.instrument = 'HARP2'   # Default instrument
-            if experimental:
+            if experimental == True:
                 self.experimental = True
         elif instrument.lower() == 'spexone':
             self.instrument = 'SPEXone'
@@ -159,7 +159,11 @@ class L1C:
 
             # Read the variables
             for var in geo_names:
-                data[var] = geo_data.variables[var][:]
+                try:
+                    data[var] = geo_data.variables[var][:]
+                except KeyError as e:
+                    print(f'Error: {filename} does not contain the required variables.')
+                    print('Error:', e)
 
             # Read the data
             obs_names = self.obsNames
@@ -211,13 +215,17 @@ class L1B:
         
     """
 
-    def __init__(self):
+    def __init__(self, experimental=False):
         """Initializes the class."""
         self.instrument = 'HARP2'   # Default instrument
         self.product = 'L1B'        # Default product
         self.projectRGB = True      # Default project to RGB
+        self.experimental = False 
+        if experimental == True:
+            self.experimental = True
         self.setInstrument(self.instrument)
         self.var_units = {}         # Dictionary to store the units for the variables
+        
 
         # viewing angle to plot
         self.viewing_angle = 'nadir'    # Default viewing angle options are 'nadir', 'aft' and 'forward'
@@ -260,8 +268,7 @@ class L1B:
                 self.geoNames = ['latitude', 'longitude', 'solar_zenith_angle', 
                                 'solar_azimuth_angle', 'sensor_zenith_angle', 'sensor_azimuth_angle',
                                 'surface_altitude']
-                
-                self.obsNames = ['i', 'q', 'u', 'dolp']
+                self.obsNames = ['i', 'q', 'u', 'dolp'] if not self.experimental else ['i', 'q', 'u', 'dolp', 'sensor1', 'sensor2', 'sensor3']
                 self.wavelengthsStr = 'intensity_wavelength'
         
 

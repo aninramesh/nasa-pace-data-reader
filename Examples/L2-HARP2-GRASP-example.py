@@ -6,10 +6,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # location of the L2 file
-fileName = '/Users/aputhukkudy/Downloads/PACE/L2/PACE_HARP2.20240311T065121.L2-AER-GRASP-v01p1.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE/L2/l2-test-bigaussian/PACE_HARP2.20240503T144123.L2-AER-GRASP-v1p3beta.nc'
 
 # l1c file location
-l1c_file = '/Users/aputhukkudy/Downloads/PACE/03-11/hipp373.aux.2024.6/PACE_HARP2.20240311T065121.L1C.5km.nc'
+l1c_file = '/Users/aputhukkudy/Downloads/PACE/05-03/bf5p5/PACE_HARP2.20240503T144123.L1C.5km.nc'
 
 # Read the L1C file
 l1c = L1.L1C()
