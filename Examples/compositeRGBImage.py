@@ -1,16 +1,25 @@
 #!/usr/bin/env python
-# Python script to generate HARP2 RGB Images in orthographic projection and plot the orbit using
-# multiple L1C files
+# Python script to generate HARP2 Projected RGB Images in a single plot
+'''
+This script is an example of how to use the nasa_pace_data_reader package to generate HARP2 Projected RGB Images in a single plot
+
+The script reads L1C files in a directory and generates a single plot with the HARP2 Projected RGB Images in robinson projection
+
+Created by Anin Puthukkudy (ESI, UMBC)
+'''
 
 # Load the required libraries
 from nasa_pace_data_reader import L1, plot
-from datetime import datetime
-import os
-import sys
-import pickle
-import argparse
-import gc
+
+# suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
+# other libraries
+import os,sys, pickle, argparse, gc
 from pathlib import Path
+from datetime import datetime
+import numpy as np
 
 # plot libraries
 from matplotlib import pyplot as plt
@@ -18,262 +27,251 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
-# suppress warnings
-import warnings
-warnings.filterwarnings("ignore")
-
 #--------------------------------------------------------------#
 # local functions
 #--------------------------------------------------------------#
-
 class Args:
         pass
 
-def plotL1C(args, fig_, rgb_, temp_num=0, viewIndex=[36, 4, 84]):
-    """ Plot the L1C file in orthographic projection"""
-
-    # Read the file
-    l1c = L1.L1C()
-    try:
-        l1c_dict = l1c.read(args.l1c_file)
-
-        # just the filename
-        l1c_file = os.path.basename(args.l1c_file)
-
-        # save path join movie directory and filename
-        args.save_path = f'{args.movie_dir}/{l1c_file.replace(".nc", ".png")}'
-
-        # Load the plot class (default instrument is HARP2)
-        plt_ = plot.Plot(l1c_dict)
-
-        # plot RGB in Orthographic projection with fixed latitude
-        lat_0 = None if args.fixed_lat == 0 else 0
-        # assert if fixed_lon is between -180 and 180
-        assert -180 <= args.fixed_lat <= 180, 'Error: fixed_lat must be between -180 and 180'
-        lon_0 = None if args.fixed_lon == 0 else args.fixed_lon
-
-
-        # normFactor
-        # normFactor = args.normFactor
-        normFactor = args_.normFactor
-        if args.viewIndex >= 4:
-            scale_=[0.85, 1.4, 1]
-        else:
-            scale_ = [1, 1, 1]
-
-        # plot RGB in Orthographic projection
-        fig2, ax2, rgb_['rgb_new'][l1c_file], \
-            rgb_['rgb_extent'][l1c_file], \
-                rgb_['dateline'][l1c_file], rgb_['lon_center'][l1c_file], \
-                     rgb_['lat_center'][l1c_file] = plt_.projectedRGB(proj='Orthographic', viewAngleIdx=viewIndex,
-                                                            normFactor=normFactor, scale=scale_, saveFig=True, returnRGB=True, # type: ignore
-                                                            figsize=(6, 6), noShow=True, savePath=args.save_path,
-                                                            lat_0=lat_0, lon_0=lon_0, proj_size=(1200, 600), highResStockImage=True,
-                                                            returnTransitionFlag=True)
-        
-        gc.collect()
-        if temp_num > 0:
-            # plot the orbit with previous L1C files
-            for key in rgb_['rgb_new']:
-                if rgb_['dateline'][key]:
-                    ax2.imshow(rgb_['rgb_new'][key], origin='lower', extent=rgb_['rgb_extent'][key], transform=ccrs.PlateCarree(central_longitude=rgb_['lon_center'][key]))
-                else:
-                    ax2.imshow(rgb_['rgb_new'][key], origin='lower', extent=rgb_['rgb_extent'][key], transform=ccrs.PlateCarree())
-                gc.collect()
-            fig2.savefig(str(args.save_path).replace('.png', '_seq.png'), dpi=args.dpi)
-        else:
-            fig2.savefig(str(args.save_path).replace('.png', '_seq.png'), dpi=args.dpi)
-        
-        return ax2
-    except Exception as e:
-        print(f'Error: {e}')
-        if "NetCDF: HDF error" in str(e):
-            print(f'Error: {args.l1c_file} has netCDF error')
-            print('---'*10)
-            os.system(f'rm -f {args.l1c_file}')
-            print(f'Error: {args.l1c_file} has been removed')
-            print('---'*10)
-        return None
-
-def makeMovieFromImages(movie_dir ,movie_name='movie', px=1600, codec='mpeg4'):
-    """ Stitch the images in a directory into a movie
+def L1C_composite(args, rgb_, viewIndex=[36, 4, 84]):
+    """Create a composite of the L1C files in the directory
     
     Args:
-        dir (str): Path to the directory containing the images
-    """
-
-    # List of images
-    images = sorted(Path(movie_dir).glob('*L1C.5km.png'))
-
-    # Create the movie using list of images in mac os
-    for i, image in enumerate(images):
-        os.system(f'convert {image} -resize {px}x{px} {movie_dir}/{i:04d}.png')
-        seq_image = str(image).replace('.png', '_seq.png')
-        os.system(f'convert {seq_image} -resize {px}x{px} {movie_dir}/{i:04d}_seq.png')
     
-    # Create the movie using list of images
-    if codec == 'mpeg4':
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec mpeg4 -pix_fmt yuv420p -y {movie_dir}/{movie_name}.mp4')
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec mpeg4 -pix_fmt yuv420p -y {movie_dir}/{movie_name}_seq.mp4')
-    elif codec == 'libx264':
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec libx264  -y {movie_dir}/{movie_name}.mp4')
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec libx264 -y {movie_dir}/{movie_name}_seq.mp4')
-    elif codec == 'h264':
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -c h264 -y {movie_dir}/{movie_name}.mp4')
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -c h264  -y {movie_dir}/{movie_name}_seq.mp4')
+    args: argparse.Namespace
     
-    """
-    if codec == 'mpeg4':
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec mpeg4 -crf 0 -y {movie_dir}/{movie_name}.mp4')
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec mpeg4 -crf 0 -y {movie_dir}/{movie_name}_seq.mp4')
-    elif codec == 'libx264':
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -vcodec libx264  -y {movie_dir}/{movie_name}.mp4')
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -vcodec libx264 -y {movie_dir}/{movie_name}_seq.mp4')
-    elif codec == 'h264':
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d.png -c libx264 -crf 18 -preset ultrafast -pix_fmt yuv420p -y {movie_dir}/{movie_name}.mp4')
-        os.system(f'ffmpeg -r 1 -i {movie_dir}/%04d_seq.png -c libx264 -crf 18 -preset ultrafast -pix_fmt yuv420p -y {movie_dir}/{movie_name}_seq.mp4')
+    rgb_: dict
+        dictionary to store the RGB images and extent
     
-    """
-#--------------------------------------------------------------#
-# arguments
-#--------------------------------------------------------------#
-    
-# check if imagemagick and ffmpeg are installed/loaded (in NyX automatically loaded by the spack)
-if os.system('which convert') != 0:
-    print('Error: imagemagick is not installed')
-    print('Please install imagemagick using the following command (NyX): spack load imagemagick')
-    if 'nyx' in os.environ['HOSTNAME']:
-        os.system('spack load imagemagick')
-    else:
-        sys.exit(1)
-
-if os.system('which ffmpeg') != 0:
-    print('Error: ffmpeg is not installed')
-    print('Please install ffmpeg using the following command (NyX): spack load ffmpeg')
-    if 'nyx' in os.environ['HOSTNAME']:
-        os.system('spack load ffmpeg')
-    else:
-        sys.exit(1)
-
-#--------------------------------------------------------------#     
-# Parse the command-line arguments
-#-- required arguments
-parser = argparse.ArgumentParser(description='Generate RGB images/movie from L1C files')
-parser.add_argument('--l1c_dir', type=str, required=True, help='L1C dir to process')
-
-#-- optional arguments
-parser.add_argument('--dpi', type=int, required=False, default=400, help='DPI of the saved figure')
-parser.add_argument('--movie-only', type=bool, required=False, default=False, help='Create movie only')
-parser.add_argument('--normFactor', type=int, required=False, default=400, help='Normalization factor for the RGB image')
-parser.add_argument('--viewIndex', type=int, required=False, default=0, help='Viewing angle for the RGB image option: 0 = -8, 1 = -43, 2 = ~54, 3 = ~22')
-parser.add_argument('--fixed_lat', type=int, required=False, default=0, help='Fixed latitude for the orthographic projection')
-parser.add_argument('--fixed_lon', type=int, required=False, default=0, help='Fixed longitude for the orthographic projection')
-parser.add_argument('--time_range', type=bool, required=False, default=0, help='Time range for the L1C files')
-
-args_ = parser.parse_args()
-
-#--------------------------------------------------------------#
-# args = Args()
-# args.dpi = args_.dpi
-# args.normFactor = args_.normFactor
-# args.fixed_lat = args_.fixed_lat
-
-#--------------------------------------------------------------#
-# DEBUG
-#--------------------------------------------------------------#
-# args_ = Args()
-# args.dpi = args_.dpi
-# args.normFactor = args_.normFactor
-# args_.fixed_lat = 1
-# args.fixed_lat = args_.fixed_lat
-# args.viewIndex = args_.viewIndex
-# args_.movie_only = 0
-# args_.viewIndex = 1
-# args_.l1c_dir = '/Users/aputhukkudy/Downloads/03-11/hipp381/'
-#--------------------------------------------------------------#
-
-# List of L1C files from a directory
-l1c_dir = Path(args_.l1c_dir)
-l1c_files = sorted(Path(l1c_dir).glob('*5km.nc'))
-
-# sort the L1C files by filename
-l1c_files = sorted(l1c_files, key=lambda x: x.name)
-
-#--------------------------------------------------------------#
-# select l1c_files in a range (start, end) based on the PACE_HARP2.20240311TXXXX*5km.nc to PACE_HARP2.20240311TYYYY*5km.nc
-if bool(args_.time_range):
-    start = 'PACE_HARP2.20240311T04500'
-    end = 'PACE_HARP2.20240311T143000'
-
-    l1c_files = [x for x in l1c_files if start <= x.name <= end]
-
-#--------------------------------------------------------------#
-
-# rgb_ dict
-rgb_ = {}
-rgb_['rgb_new'] = {}
-rgb_['rgb_extent'] = {}
-rgb_['dateline'] = {}
-rgb_['lon_center'] = {}
-rgb_['lat_center'] = {}
-
-#--------------------------------------------------------------
-
-# viewIndex
-if args_.viewIndex == 0:
-    viewIndex = [36, 4, 84]
-elif args_.viewIndex == 1:
-    viewIndex = [19, 1, 81]
-elif args_.viewIndex == 2:
-    viewIndex = [67, 9, 89]
-elif args_.viewIndex == 3:
-    viewIndex = [49, 6, 86]
-elif args_.viewIndex == 4:
-    viewIndex = [36, 73, 84]
-elif args_.viewIndex == 5:
-    viewIndex = [19, 71, 81]
-else:
-    print('Error: viewIndex must be 0-5')
-    sys.exit(1)
-
-# Make a movie from the images
-# movie directory
-movie_dir = f'{l1c_dir}/movie_{str(args_.viewIndex)}' +'_Idx_lat'+str(args_.fixed_lat) + '_lon' + str(args_.fixed_lon)
-args_.movie_dir = movie_dir
-os.makedirs(movie_dir, exist_ok=True)
-
-# Define the figure handle
-fig = plt.figure(dpi=args_.dpi, figsize=(12, 12))
-
-temp_num = 0
-
-# Loop through the L1C files
-if not bool(args_.movie_only):
-    for l1c_file in l1c_files:
-        args_.l1c_file = str(l1c_file)
-        args_.save_path = l1c_file.with_suffix('.png')
-        print('Projecting RGB for:', args_.l1c_file)
-        ax_new = plotL1C(args_, fig, rgb_, temp_num=temp_num, viewIndex=viewIndex)
-        temp_num += 1
-#--------------------------------------------------------------#
-# Save the RGB_ dict
-#--------------------------------------------------------------#
+    viewIndex: list
+        list of view angles for the RGB images
         
-# Save the RGB dict
-savePickle = False
-if savePickle:
-    with open(f'{movie_dir}/rgb_dict.pkl', 'wb') as f:
-        pickle.dump(rgb_, f)
-        print(f'RGB dict saved in {movie_dir}/rgb_dict.pkl')
-
-gc.collect()
+    Returns:
     
-try:
-    makeMovieFromImages(movie_dir=movie_dir,  movie_name='FullOrbit', px=1600, codec='mpeg4') if bool(args_.movie_only) else None
-except Exception as e:
-    print(f'Error: {e}')
-    print('No need to worry, the images are saved in the directory, you can create the movie using the following command:')
-    print(f'python plotTheOrbitData.py --l1c_dir {l1c_dir} --movie-only 1')
-    sys.exit(1)
+    rgb_: dict
+        dictionary to store the RGB images and extent"""
 
-#-----------------------end of script---------------------------#
+    # list all the files in the directory
+    l1c_files = [f for f in os.listdir(args.l1c_dir) if f.endswith('L1C.5km.nc')]
+    
+    # sort by filename
+    l1c_files.sort()
+
+    # projection size
+    proj_size = (600, 300)
+    rgb_dolp_ =  False
+
+    # which variable to plot
+    if args.dolp:
+        var = 'dolp'
+        args.normFactor=30
+        viewIndex=[31, 3, 83]
+        scale_=[0.8, 1, 1]
+        rgb_dolp_ = True
+    else:
+        var = 'i'
+
+    # loop through the files
+    for l1c_file in l1c_files:
+        # Read the file
+        l1c = L1.L1C()
+        try:
+            file_path = os.path.join(args.l1c_dir, l1c_file)
+            l1c_dict = l1c.read(file_path)
+
+            # just the filename
+            l1c_file = os.path.basename(file_path)
+
+            # Load the plot class (default instrument is HARP2)
+            plt_ = plot.Plot(l1c_dict)
+
+            # plot RGB in Orthographic projection
+            if args.viewIndex < 4:
+                rgb_['rgb_new'][l1c_file], \
+                    rgb_['rgb_extent'][l1c_file], \
+                        rgb_['dateline'][l1c_file] = plt_.projectedRGB(var=var, proj='None', viewAngleIdx=viewIndex,
+                                                                        normFactor=args.normFactor, saveFig=True, returnRGB=True,
+                                                                        figsize=(6, 6), noShow=True, savePath=args.save_path,
+                                                                        proj_size=proj_size, returnTransitionFlag=True, rgb_dolp=rgb_dolp_)
+            elif args.viewIndex >= 4 and args.viewIndex < 6:
+                
+                if not args.dolp:
+                    scale_=[0.9 , 1.1, 1]
+
+                rgb_['rgb_new'][l1c_file], \
+                    rgb_['rgb_extent'][l1c_file], \
+                        rgb_['dateline'][l1c_file] = plt_.projectedRGB(var=var, proj='None', viewAngleIdx=viewIndex,
+                                                                        normFactor=args.normFactor, scale=scale_, saveFig=True, returnRGB=True,
+                                                                        figsize=(6, 6), noShow=True, savePath=args.save_path,
+                                                                        proj_size=proj_size, returnTransitionFlag=True, rgb_dolp=rgb_dolp_)
+            else:
+                rgb_['rgb_new'][l1c_file],\
+                    rgb_['rgb_extent'][l1c_file],\
+                        rgb_['dateline'][l1c_file] = plt_.projectedRGB(var=var, proj='None', viewAngleIdx=viewIndex,
+                                                                        normFactor=args.normFactor, scale=scale_, saveFig=True, returnRGB=True,
+                                                                        figsize=(6, 6), noShow=True, savePath=args.save_path,
+                                                                        proj_size=proj_size, returnTransitionFlag=True, rgb_dolp=rgb_dolp_)
+            
+            gc.collect()
+
+        except Exception as e:
+            print(f'Error: {e}')
+            continue
+        
+    return rgb_
+
+if __name__ == "__main__":
+
+    VERSION = '1.1'
+
+    #-- Screen printing time and version
+    mtime_str = datetime.fromtimestamp(
+        Path(__file__).stat().st_mtime).isoformat(sep=' ', timespec='seconds')
+    print(f'({mtime_str})\n')
+
+    #--------------------------------------------------------------=---
+    #-- 1. Command-line arguments/options with argparse
+    #--------------------------------------------------------------=---
+    
+    parser = argparse.ArgumentParser(
+                formatter_class=argparse.RawTextHelpFormatter,
+                description='HARP2 L1C composite of the day',
+                epilog="""
+    EXIT Status:
+        0   : All is well in the world
+        1   : Dunno, something horrible occurred
+                """)
+
+    #-- required arguments
+    parser.add_argument('--l1c_dir',  type=str, required=True, help='path+filename of the HARP2 Level 1C file')
+    parser.add_argument('--save_path', type=str, required=False, help='path to save the composite image')
+
+    #-- optional arguments
+    parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--instrument', type=str, default='HARP2', help='HARP2, or AirHARP2',
+                        choices=['HARP2','AirHARP2'])
+    parser.add_argument('--dpi', type=int, default=300, help='DPI of the saved figure')
+    parser.add_argument('--normFactor', type=int, default=300, help='Normalization factor for the RGB plot')
+    parser.add_argument('--label', type=int, default=1, help='Add label to the RGB plot')
+    parser.add_argument('--tag', type=str, default='', help='Tag to add to the filename')
+    parser.add_argument('--viewIndex', type=int, default=0, help='Tag to add to the filename')
+    parser.add_argument('--dolp', type=int, default=0, help='Use Dolp to plot the RGB image')
+
+    #-- retrieve arguments
+    args = parser.parse_args()
+
+    # parse the boolean arguments
+    args.label = bool(args.label)
+    args.dolp = bool(args.dolp)
+
+    #-- validate arguments
+    assert os.path.exists(args.l1c_dir), 'l1c_file does not exist!' 
+    assert args.instrument in ['HARP2','AirHARP2'], 'instrument must be HARP2 or AirHARP2'
+    assert args.normFactor > 0, 'normFactor must be greater than 0'
+
+    # save the figure in the same directory as the L1C file
+    if args.save_path is None:
+        print('save_path is not provided. Saving the composite in the same directory as the L1C files')
+        # add quicklook/composite to the directory name
+        args.save_path = os.path.join(os.path.dirname(args.l1c_dir), 'quicklook/composite')
+        # create a new directory
+        os.makedirs(args.save_path, exist_ok=True)
+    if Path(args.save_path).is_dir():
+        os.makedirs(args.save_path, exist_ok=True)
+        assert os.path.exists(args.save_path), 'save_path does not exist!'
+    else:
+        if os.path.dirname(args.save_path)!='':
+            os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+            assert os.path.exists(os.path.dirname(args.save_path)), 'save_path does not exist!'
+
+    #--------------------------------------------------------------#
+    #-- run the main program
+    #--------------------------------------------------------------#
+            
+    # define the args for debug
+    # args = Args()
+    # args.l1c_dir = '/Users/aputhukkudy/Downloads/03-28/'
+    # args.save_path = '/Users/aputhukkudy/Downloads/03-28/composite'
+    # args.normFactor = 400
+    # args.dpi = 600
+    # args.label = False
+    # args.tag = 'test'
+    # args.viewIndex = 2
+    # args.dolp = False
+
+    # viewIndex
+    if args.viewIndex == 0:
+        viewIndex = [36, 4, 84]
+    elif args.viewIndex == 1:
+        viewIndex = [19, 1, 81]
+    elif args.viewIndex == 2:
+        viewIndex = [67, 9, 89]
+    elif args.viewIndex == 3:
+        viewIndex = [49, 6, 86]
+    elif args.viewIndex == 4:
+        viewIndex = [36, 73, 84]
+    elif args.viewIndex == 5:
+        viewIndex = [19, 71, 81]
+    else:
+        print('Error: viewIndex must be 0-5')
+        sys.exit(1)
+            
+    # rgb_ dict
+    rgb_ = {}
+    rgb_['rgb_new'] = {}
+    rgb_['rgb_extent'] = {}
+    rgb_['dateline'] = {}
+
+    # plot the composite image  
+    rgb_ = L1C_composite(args, rgb_, viewIndex=viewIndex)
+
+    #%% plot images
+    # plot the composite image in robinson projection
+    fig = plt.figure(figsize=(18, 9))
+    axm = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson(central_longitude=0))
+    fig.patch.set_facecolor('black')
+    # set the extent to global
+    axm.set_global()
+
+    # add standard background map
+    axm.stock_img()
+
+    # add coastlines
+    axm.coastlines(lw=0.1)
+
+    # add the RGB image
+    for key in rgb_['rgb_new'].keys():
+
+        print(key)
+
+        # clon = 180 if rgb_['dateline'][key] else 0
+        # mask the black pane
+        rgb_new = np.ma.masked_where(rgb_['rgb_new'][key]== 0, rgb_['rgb_new'][key])
+        axm.imshow(rgb_new, origin='lower', extent=rgb_['rgb_extent'][key], transform=ccrs.PlateCarree())
+
+        # add the date
+        date = key.split('.')[1]
+        # locate the date at the center of the projected image
+        print('Longitude: %f, Latitude: %f' %(np.mean(rgb_['rgb_extent'][key][:2]), np.mean(rgb_['rgb_extent'][key][2:])))
+        print('Dateline: %s' %rgb_['dateline'][key])
+        
+        # label
+        if args.label:
+            axm.text(np.mean(rgb_['rgb_extent'][key][:2]), np.mean(rgb_['rgb_extent'][key][2:]), date[9:],
+                    fontsize=6, color='m', ha='center', va='center', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round', pad=0.5, alpha=0.75),
+                    transform=ccrs.PlateCarree())
+
+    # set the title
+    axm.set_title('HARP2 L1C Composite\n%s' %(date[:8]), fontsize=12, color='tan')
+    
+    # tight layout
+    plt.tight_layout()
+
+    # save the figure
+    # add the date to the filename
+    os.makedirs(args.save_path, exist_ok=True)
+    saveFileName = os.path.join(args.save_path, 'rgb_composite_viewIdx-%s-%s-%s.png' %(str(viewIndex[0]),
+                                                                                   datetime.now().strftime('%Y-%m-%d'),
+                                                                                   args.tag))
+    fig.savefig(saveFileName, dpi=args.dpi)
+    print(f'Composite saved to {saveFileName}')
