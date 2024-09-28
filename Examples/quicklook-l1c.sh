@@ -6,6 +6,9 @@
 # autogenerate quicklooks for all *L1C.nc files in the target directory
 autogenPy=/data/archive/ESI/HARP2/Software/quicklook/auto-image-gen-harp2.py
 
+# file extension
+ext="*L1C*5km.nc"
+
 # Parse the command line arguments if no second argument is provided
 if [ $# -eq 0 ]; then
     echo "No arguments provided"
@@ -51,7 +54,7 @@ if [ -z "$(ls -A $target_dir)" ]; then
 fi
 
 # Check if the target directory contains any *L1C.nc files
-if [ -z "$(find "$target_dir" -name "*L1C.nc")" ]; then
+if [ -z "$(find "$target_dir" -name "$ext")" ]; then
     echo "The target directory does not contain any *L1C.nc files: $target_dir"
     exit 1
 fi
@@ -82,7 +85,8 @@ fi
 
 
 # List all *L1C.nc files in the target directory
-files=$(find "$target_dir" -name "*L1C.5km.nc")
+# files=$(find "$target_dir" -name "*L1C.nc")
+files=$(find "$target_dir" -name "$ext")
 
 # Loop through each file
 for file in $files; do
@@ -91,6 +95,7 @@ for file in $files; do
     nfile=$(basename $file)
     nfile="${nfile%.*}"
     if [ -f "$dest_dir/$nfile""_quicklook.png" ]; then
+        echo "$dest_dir/$nfile""_quicklook.png"
         echo "Quick look already exists: $file"
         continue
     else
