@@ -29,29 +29,29 @@ def project_and_copy(l2, var, fig_base_, ax_base_, return_= False, **kwargs):
 # ---- Change the following parameters ---- #
 
 # location of the L2 file
-fileName = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/PACE_HARP2.20240907T172452.L1C.V2.5km-v0.2.4.IDOLP-test.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE/L2/2p6/PACE_HARP2.20241102T071117.L1C.V2.5km-v0.2.6.IDOLP_3px.nc'
 # fileName2 = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/PACE_HARP2.20240907T172952.L1C.V2.5km-v0.2.4.IDOLP-test.nc'
 
 # l1c file location
-l1c_file = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/PACE_HARP2.20240907T172452.L1C.V2.5km.nc'
+l1c_file = '/Users/aputhukkudy/Downloads/PACE_HARP2.20241102T071117.L1C.V2.5km.nc'
 
 # save the plots in a folder
-saveDir = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/Plots_1724'
+saveDir = '/Users/aputhukkudy/Downloads/PACE/L2/2p6/20241102T071117/'
 
 dpi = 160
 cmap = 'Spectral_r'
 
 # chi2 filtering filter chi2 values greater than chiMax or chiMin
-chiMax = 10
+chiMax = 8
 chiMin = 0.01
 l2_chi2_mask = True # None to not use it, True to use it
 
 # filtering the retrieved products based on the min AOD value
-minAOD_550 = 0.2
+minAOD_550 = 0.25
 AOD_mask = True     # None to not use it, True to use it
 
 # extents of the plot
-AOD = [0, 5]
+AOD = [0, 1]
 SSA = [0.85, 1]
 Reff_coarse = [0.5, 3]
 Reff_fine = [0.08, 0.35]
@@ -139,7 +139,7 @@ fig_, ax_ = copy.deepcopy((fig_base, ax_base))
 project_and_copy(l2, 'angstrom', fig_, ax_, vmin=AE[0], vmax=AE[1], **common_params)
 
 fig_, ax_ = copy.deepcopy((fig_base, ax_base))
-project_and_copy(l2, 'chi2', fig_, ax_, vmax=chiMax, **common_params)
+project_and_copy(l2, 'chi2', fig_, ax_, vmax=chiMax, limitTriangle=[0,1], **common_params)
 
 '''
 # Read the L2 file
