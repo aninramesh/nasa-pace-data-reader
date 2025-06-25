@@ -174,6 +174,7 @@ class L2:
                    black_background=False, ax=None, fig=None,
                    chi2Mask=None, saveFig=False, rgb_extent=None,
                    horizontalColorbar=False, limitTriangle= [0, 0],
+                   savePath=None, aod_mask=None,
                 **kwargs):
         """
         Plots a specified variable on a geographical projection.
@@ -231,8 +232,12 @@ class L2:
             plt.rcParams['axes.edgecolor'] = 'tan'
             plt.rcParams['axes.facecolor'] = 'tan'
 
-
-        ax.set_title(f'{var} at {wavelength} nm')
+        if var in ['chi2', 'n_iter', 'quality_flag',
+                    'reff_coarse', 'reff_fine', 'vd',
+                    'windspeed', 'angstrom', 'alh', 'spherFrac']:
+            ax.set_title(f'{var}')
+        else:
+            ax.set_title(f'{var} at {wavelength} nm')
         ax.coastlines()
         # Add geographical features to the plot.
         ax.add_feature(cfeature.LAND, alpha=0.5)
@@ -243,6 +248,11 @@ class L2:
         # Plot the data.
         if chi2Mask is not None:
             data = np.ma.masked_where(chi2Mask, data)
+
+        # mask data if aod_mask is provided
+        if aod_mask is not None:
+            data = np.ma.masked_where(aod_mask, data)
+            
         if rgb_extent is not None:
             im = ax.imshow(data, origin='lower', extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
         else:
@@ -297,7 +307,14 @@ class L2:
 
         # Save the figure if requested.
         if saveFig:
-            fig.savefig(f'{var}_wavelength_{wavelength}_nm.png', dpi=dpi, transparent=True)
+            if savePath is None:
+                fig.savefig(f'{var}_wavelength_{wavelength}_nm.png', dpi=dpi, transparent=True)
+            else:
+                # make sure the path exists
+                if not os.path.exists(savePath):
+                    os.makedirs(savePath)
+                full_path = os.path.join(savePath, f'{var}_wavelength_{wavelength}_nm.png')
+                fig.savefig(full_path, dpi=dpi, transparent=True)
         
         plt.show()
 
