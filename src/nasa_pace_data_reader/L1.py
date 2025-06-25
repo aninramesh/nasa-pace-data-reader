@@ -5,6 +5,9 @@ import datetime
 # Third-party imports for handling NetCDF files.
 from netCDF4 import Dataset # type: ignore
 
+# Local imports for custom exceptions.
+from .exceptions import InstrumentMismatchError, VariableNotFoundError, InvalidFileError
+
 class L1C:
     """
     A class to read and process NASA PACE Level 1C data files.
@@ -157,12 +160,14 @@ class L1C:
 
         print(f'Reading {self.instrument} data from {filename}')
 
-        correctFile = self.checkFile(filename)
-        if not correctFile:
-            print(f'Error: {filename} does not contain {self.instrument} data.')
-            return
+        if not self.checkFile(filename):
+            raise InstrumentMismatchError(f'Error: {filename} does not contain {self.instrument} data.')
 
-        dataNC = Dataset(filename, 'r')
+        try:
+            dataNC = Dataset(filename, 'r')
+        except FileNotFoundError:
+            raise InvalidFileError(f"Error: File not found at {filename}")
+        
         data = {}
 
         try:
@@ -184,27 +189,22 @@ class L1C:
 
             # Read the variables
             for var in geo_names:
-                try:
-                    data[var] = geo_data.variables[var][:]
-                except KeyError as e:
-                    print(f'Error: {filename} does not contain the required variables.')
-                    print('Error:', e)
+                if var not in geo_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
+                data[var] = geo_data.variables[var][:]
 
             # Read the data
             obs_names = self.obsNames
 
             data['_units'] = {}
             for var in obs_names:
-                try:
-                    data[var] = obs_data.variables[var][:]
+                if var not in obs_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
+                data[var] = obs_data.variables[var][:]
 
-                    # read the units for the variable
-                    data['_units'][var] = obs_data.variables[var].units
-                    self.unit(var, obs_data.variables[var].units)
-                except KeyError as e:
-                    print(f'Error: {filename} does not contain the required variables.')
-                    print('Error:', e)
-                    print('Maybe the file is L1C experimental?')
+                # read the units for the variable
+                data['_units'][var] = obs_data.variables[var].units
+                self.unit(var, obs_data.variables[var].units)
 
             # read the F0 and unit
             data['F0'] = sensor_data.variables[self.F0Str][:]
@@ -226,8 +226,7 @@ class L1C:
             return data
 
         except KeyError as e:
-            print(f'Error: {filename} does not contain the required variables.')
-            print('Error:', e)
+            raise VariableNotFoundError(f"Missing variable in {filename}: {e}")
 
     
             # close the netCDF file
@@ -319,12 +318,14 @@ class L1B:
 
         print(f'Reading {self.instrument} {self.product} data from {filename}')
 
-        correctFile = self.checkFile(filename)
-        if not correctFile:
-            print(f'Error: {filename} does not contain {self.instrument} data.')
-            return
+        if not self.checkFile(filename):
+            raise InstrumentMismatchError(f'Error: {filename} does not contain {self.instrument} data.')
 
-        dataNC = Dataset(filename, 'r')
+        try:
+            dataNC = Dataset(filename, 'r')
+        except FileNotFoundError:
+            raise InvalidFileError(f"Error: File not found at {filename}")
+
         data = {}
 
         try:
@@ -342,6 +343,8 @@ class L1B:
 
             # Read the variables
             for var in geo_names:
+                if var not in geo_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
                 data[var] = geo_data.variables[var][:]
 
             # Read the data
@@ -349,16 +352,13 @@ class L1B:
 
             data['_units'] = {}
             for var in obs_names:
-                try:
-                    data[var] = obs_data.variables[var][:]
+                if var not in obs_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
+                data[var] = obs_data.variables[var][:]
 
-                    # read the units for the variable
-                    data['_units'][var] = obs_data.variables[var].units
-                    self.unit(var, obs_data.variables[var].units)
-                except KeyError as e:
-                    print(f'Error: {filename} does not contain the required variables.')
-                    print('Error:', e)
-                    print('Maybe the file is L1B experimental?')
+                # read the units for the variable
+                data['_units'][var] = obs_data.variables[var].units
+                self.unit(var, obs_data.variables[var].units)
 
             # read the F0 and unit
             # data['F0'] = sensor_data.variables['intensity_F0'][:] # FIXME: This is not available in L1B
@@ -379,8 +379,7 @@ class L1B:
             return data
 
         except KeyError as e:
-            print(f'Error: {filename} does not contain the required variables.')
-            print('Error:', e)
+            raise VariableNotFoundError(f"Missing variable in {filename}: {e}")
 
     
             # close the netCDF file
@@ -408,7 +407,10 @@ class L1beta:
         """
         print(f'Reading {self.instrument} data from {filename}')
 
-        dataNC = Dataset(filename, 'r')
+        try:
+            dataNC = Dataset(filename, 'r')
+        except FileNotFoundError:
+            raise InvalidFileError(f"Error: File not found at {filename}")
 
         # define the groups
         img_data = dataNC.groups['IMAGE_DATA']
@@ -425,16 +427,20 @@ class L1beta:
 
             # load the variables from the group img_data
             for key_ in img_data_vars:
+                if key_ not in img_data.variables:
+                    raise VariableNotFoundError(f"Variable '{key_}' not found in {filename}")
                 data[key_] = img_data.variables[key_][:]
             
             for key_ in nav_data_vars:
+                if key_ not in nav_data.variables:
+                    raise VariableNotFoundError(f"Variable '{key_}' not found in {filename}")
                 data[key_] = nav_data.variables[key_][:]
 
             # close the netCDF file
             dataNC.close()
 
-        except KeyError:
-            print(f'Error: {filename} does not contain the required variables.')
+        except KeyError as e:
+            raise VariableNotFoundError(f"Missing variable in {filename}: {e}")
     
             # close the netCDF file
             dataNC.close()

@@ -15,6 +15,9 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
+# Local imports for custom exceptions.
+from .exceptions import InstrumentMismatchError, VariableNotFoundError, InvalidFileError
+
 class L2:
     """
     A class for reading and processing NASA PACE Level 2 product files.
@@ -67,12 +70,14 @@ class L2:
 
         print(f'Reading {self.instrument}-{self.product} products from {filename}...')
 
-        correctFile = self.checkFile(filename)
-        if not correctFile:
-            print(f'Error: {filename} does not contain {self.instrument}-{self.product} L2 file.')
-            return
+        if not self.checkFile(filename):
+            raise InstrumentMismatchError(f'Error: {filename} does not contain {self.instrument}-{self.product} L2 file.')
 
-        dataNC = Dataset(filename, 'r')
+        try:
+            dataNC = Dataset(filename, 'r')
+        except FileNotFoundError:
+            raise InvalidFileError(f"Error: File not found at {filename}")
+
         data = {}
         data['_units'] = {}
 
@@ -89,26 +94,27 @@ class L2:
 
             # Read diagnostic data.
             for var in self.diagnosticNames:
+                if var not in diagnostic_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
                 data[var] = diagnostic_data.variables[var][:]
 
             # Read geolocation data.
             geo_names = self.geoNames
             for var in geo_names:
+                if var not in geo_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
                 data[var] = geo_data.variables[var][:]
 
             # Read geophysical data.
             geophysical_names = self.geophysicalNames
             data['_units'] = {}
             for var in geophysical_names:
-                try:
-                    data[var] = geophysical_data.variables[var][:]
-                    # Store the units for each variable.
-                    data['_units'][var] = geophysical_data.variables[var].units
-                    self.unit(var, geophysical_data.variables[var].units)
-                except KeyError as e:
-                    print(f'Error: {filename} does not contain the required variables.')
-                    print('Error:', e)
-                    print('Maybe the file is L1C experimental?')
+                if var not in geophysical_data.variables:
+                    raise VariableNotFoundError(f"Variable '{var}' not found in {filename}")
+                data[var] = geophysical_data.variables[var][:]
+                # Store the units for each variable.
+                data['_units'][var] = geophysical_data.variables[var].units
+                self.unit(var, geophysical_data.variables[var].units)
 
             # Read sensor band parameters.
             data['wavelengths'] = sensor_data.variables['wavelength'][:]
@@ -124,8 +130,7 @@ class L2:
             return data
 
         except KeyError as e:
-            print(f'Error: {filename} does not contain the required variables.')
-            print('Error:', e)
+            raise VariableNotFoundError(f"Missing variable in {filename}: {e}")
 
     
             # close the netCDF file
