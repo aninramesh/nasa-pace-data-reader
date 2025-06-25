@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Downloads/PACE/OCI-Dark/PACE_HARP2.20240307T125735.L1C.5km.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE_HARP2.20240913T211051.L1C.V2.5km.nc'
 
 # Read the file
 l1c = L1.L1C()

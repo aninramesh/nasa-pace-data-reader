@@ -1,16 +1,27 @@
+# Standard library imports for operating system interaction and date/time manipulation.
 import os
-from netCDF4 import Dataset # type: ignore
 import datetime
 
+# Third-party imports for handling NetCDF files.
+from netCDF4 import Dataset # type: ignore
 
 class L1C:
-    """Class for reading
-        NASA PACE Level 1C data files.
-        
+    """
+    A class to read and process NASA PACE Level 1C data files.
+    This class is designed to handle data from multiple instruments aboard the PACE satellite,
+    including HARP2, SPEXone, and OCI.
     """
 
     def __init__(self, instrument='HARP2', experimental=False):
-        """Initializes the class."""
+        """
+        Initializes the L1C data reader class.
+
+        Args:
+            instrument (str): The name of the instrument to read data from.
+                              Defaults to 'HARP2'.
+            experimental (bool): Flag to indicate if the data is from an experimental
+                                 product. Defaults to False.
+        """
         self.experimental = False
         if instrument.lower() == 'harp2':
             self.instrument = 'HARP2'   # Default instrument
@@ -28,16 +39,15 @@ class L1C:
         # viewing angle to plot
         self.viewing_angle = 'nadir'    # Default viewing angle options are 'nadir', 'aft' and 'forward'
 
-    # function to check if the file has the name of instrument
     def checkFile(self, filename):
-        """Checks if the file has the name of the instrument.
-        
+        """
+        Checks if the filename corresponds to the selected instrument.
+
         Args:
-            filename (str): The name of the file.
+            filename (str): The name of the file to check.
         
         Returns:
-            bool: True if the file has the name of the instrument, False otherwise.
-
+            bool: True if the filename contains the instrument name, False otherwise.
         """
         if self.instrument.lower() in filename.lower():
             return True
@@ -46,13 +56,13 @@ class L1C:
         
     
     def setInstrument(self, instrument):
-        """Sets the instrument.
-        
+        """
+        Configures the class properties based on the specified instrument.
+        This includes setting up the expected names for geolocation and observation
+        variables within the NetCDF files.
+
         Args:
             instrument (str): The name of the instrument.
-        
-        Returns:
-            None
         """
 
         match instrument.lower():
@@ -104,7 +114,15 @@ class L1C:
                 self.VAStr = 'sensor_view_angle'
 
     def dateStr(self, filepath):
-        """Returns the date string."""
+        """
+        Extracts and returns the date and time from the filename.
+
+        Args:
+            filepath (str): The full path to the data file.
+
+        Returns:
+            datetime.datetime: A datetime object representing the observation time.
+        """
         # Extract the filename from the filepath
         filename_ = os.path.basename(filepath)
 
@@ -115,18 +133,25 @@ class L1C:
         return datetime.datetime.strptime(date_time_str, '%Y%m%dT%H%M%S')
     
     def unit(self, var, units):
-            """Returns the units for the variable."""
+            """
+            Stores the units for a given variable in the var_units dictionary.
+            
+            Args:
+                var (str): The name of the variable.
+                units (str): The units of the variable.
+            """
             self.var_units[var] = units  
 
     def read(self, filename):
-        """Reads the data from the file.
-        
+        """
+        Reads the data from a specified L1C file.
+
         Args:
-            filename (str): The name of the file to read.
+            filename (str): The path to the L1C file.
 
         Returns:
-            dict: A dictionary containing the data.
-
+            dict: A dictionary containing the data extracted from the file.
+                  Returns None if the file does not match the instrument.
         """
         
 
@@ -210,13 +235,18 @@ class L1C:
 
         
 class L1B:
-    """Class for reading
-        NASA PACE Level 1B data files.
-        
+    """
+    A class for reading NASA PACE Level 1B data files.
+    This class is tailored for HARP2 instrument data.
     """
 
     def __init__(self, experimental=False):
-        """Initializes the class."""
+        """
+        Initializes the L1B data reader class.
+
+        Args:
+            experimental (bool): Flag for experimental data products.
+        """
         self.instrument = 'HARP2'   # Default instrument
         self.product = 'L1B'        # Default product
         self.projectRGB = True      # Default project to RGB
@@ -231,19 +261,24 @@ class L1B:
         self.viewing_angle = 'nadir'    # Default viewing angle options are 'nadir', 'aft' and 'forward'
     
     def unit(self, var, units):
-            """Returns the units for the variable."""
+            """
+            Stores the units for a given variable.
+            
+            Args:
+                var (str): The variable name.
+                units (str): The unit string.
+            """
             self.var_units[var] = units  
     
-    # function to check if the file has the name of instrument
     def checkFile(self, filename):
-        """Checks if the file has the name of the instrument.
-        
+        """
+        Checks if the filename is for the correct instrument.
+
         Args:
-            filename (str): The name of the file.
+            filename (str): The file name to check.
         
         Returns:
-            bool: True if the file has the name of the instrument, False otherwise.
-
+            bool: True if the file is for the set instrument.
         """
         if self.instrument.lower() in filename.lower():
             return True
@@ -251,13 +286,11 @@ class L1B:
             return False
 
     def setInstrument(self, instrument):
-        """Sets the instrument.
-        
+        """
+        Sets up the instrument-specific variable names.
+
         Args:
             instrument (str): The name of the instrument.
-        
-        Returns:
-            None
         """
 
         match instrument.lower():
@@ -273,14 +306,14 @@ class L1B:
         
 
     def read(self, filename):
-        """Reads the data from the file.
-        
+        """
+        Reads data from the given L1B file.
+
         Args:
-            filename (str): The name of the file to read.
+            filename (str): The path to the L1B file.
 
         Returns:
-            dict: A dictionary containing the data.
-
+            dict: A dictionary containing the read data.
         """
         
 
@@ -353,19 +386,26 @@ class L1B:
             # close the netCDF file
             dataNC.close()
 class L1beta:
-    """Class for reading
-        NASA PACE Level 1beta data files.
-        
+    """
+    A class for reading NASA PACE Level 1 beta data files, specifically for the GAPMAP instrument.
     """
 
     def __init__(self):
-        """Initializes the class."""
+        """Initializes the L1beta data reader class."""
         self.instrument = 'GAPMAP'   # Default instrument
         self.product = 'L1beta'        # Default product
         
 
     def read(self, filename):
-        """Reads the data from the file."""
+        """
+        Reads data from the given L1beta file.
+        
+        Args:
+            filename (str): The path to the L1beta file.
+            
+        Returns:
+            dict: A dictionary containing the read data.
+        """
         print(f'Reading {self.instrument} data from {filename}')
 
         dataNC = Dataset(filename, 'r')

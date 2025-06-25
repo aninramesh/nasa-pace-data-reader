@@ -6,10 +6,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # location of the L2 file
-fileName = '/Users/aputhukkudy/Downloads/PACE/L2/l2-test-bigaussian/PACE_HARP2.20240503T144123.L2-AER-GRASP-v1p3beta.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE/L2/v0p2p6/PACE_HARP2.20241110T082844.L1C.V2.5km-v0.2.6.IDOLP_3px.nc'
 
 # l1c file location
-l1c_file = '/Users/aputhukkudy/Downloads/PACE/05-03/bf5p5/PACE_HARP2.20240503T144123.L1C.5km.nc'
+l1c_file = '/Users/aputhukkudy/Downloads/PACE_HARP2.20241110T082844.L1C.V2.5km.nc'
 
 # Read the L1C file
 l1c = L1.L1C()
@@ -33,20 +33,22 @@ l2 = L2.L2()
 l2_dict = l2.read(fileName)
 
 # chi2 filtering filter chi2 values greater than chiMax or chiMin
-chiMax = 10
-chiMin = 0.05
+chiMax = 20
+chiMin = 0.01
 l2_chi2_mask = None
 if l2_dict is not None:
     l2_chi2_mask = (l2_dict['chi2'] > chiMax) | (l2_dict['chi2'] < chiMin)
+    # additional filtering based on the aod values at 550 nmplt.c
+    l2_chi2_mask = l2_chi2_mask | (l2_dict['aot'][:, :,1] < 0.25)
 
 #%% plot the aot data
-l2.projectVar('aot', dpi=dpi, vmax=1, vmin=0, cmap=cmap,
+l2.projectVar('aot', dpi=dpi, vmax=5, vmin=0, cmap=cmap,
               chi2Mask=l2_chi2_mask,
               saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
               black_background=True, limitTriangle=[0,1])
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
-l2.projectVar('aot_fine', dpi=dpi, vmax=1, vmin=0, cmap=cmap, chi2Mask=l2_chi2_mask,
+l2.projectVar('aot_fine', dpi=dpi, vmax=5, vmin=0, cmap=cmap, chi2Mask=l2_chi2_mask,
               saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True,
               black_background=True, limitTriangle=[0,1])
 del fig_, ax_
@@ -87,6 +89,14 @@ l2.projectVar('reff_fine', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, vmin=0.08,
               saveFig=True, fig=fig_, ax=ax_, noAxisTicks=True, limitTriangle=[1,1],
               black_background=True, )
 l2.projectVar('vd', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask)
+del fig_, ax_
+fig_, ax_ = copy.deepcopy((fig_1, ax_1))
+l2.projectVar('angstrom', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, fig=fig_, ax=ax_,
+              black_background=True, saveFig=True, noAxisTicks=True, vmax=2, vmin=-0.2)
+del fig_, ax_
+fig_, ax_ = copy.deepcopy((fig_1, ax_1))
+l2.projectVar('alh', dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, fig=fig_, ax=ax_,
+              black_background=True, saveFig=True, noAxisTicks=True, vmax=7000, vmin=500)
 del fig_, ax_
 fig_, ax_ = copy.deepcopy((fig_1, ax_1))
 l2.projectVar('mr', wavelength=550, dpi=dpi, cmap=cmap, chi2Mask=l2_chi2_mask, vmin=1.33, vmax=1.7,

@@ -1,17 +1,32 @@
+'''# Standard library and third-party imports for data handling, plotting, and scientific computation.
 import os
-from matplotlib import pyplot as plt
-import matplotlib.ticker as mticker
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from scipy import interpolate
 
-# cartopy related imports
+# Matplotlib and related imports for creating plots.
+from matplotlib import pyplot as plt
+import matplotlib.ticker as mticker
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+# Cartopy imports for geographical map projections.
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 class Plot:
+    """
+    A class to create various plots from NASA PACE instrument data.
+    This class handles data from multiple instruments and provides methods for
+    plotting pixel data, RGB images, and geographical projections.
+    """
     def __init__(self, data, instrument='HARP2'):
+        """
+        Initializes the Plot class.
+
+        Args:
+            data (dict): A dictionary containing the data read from a PACE file.
+            instrument (str, optional): The name of the instrument. Defaults to 'HARP2'.
+        """
         self.data = data
         self.plotDPI = 240
         self.xAxis = 'scattering_angle'
@@ -41,9 +56,11 @@ class Plot:
 
 
     def setPlotStyle(self,font=None):
-        """Set the plot style for the plot.
+        """
+        Sets the global plotting style for matplotlib.
+
         Args:
-            None
+            font (str, optional): The font family to use for plots. Defaults to None.
         """
         plt.rcParams.update({
                     'xtick.direction': 'in',
@@ -60,12 +77,11 @@ class Plot:
 
 
     def setBandAngles(self, band=None):
-        """Set the band angles for the plot.
-        Args:
-            bandAngles (list): The band angles for the plot.
+        """
+        Sets the band angles based on the instrument and band.
 
-        Returns:
-            None
+        Args:
+            band (str, optional): The spectral band. Defaults to the current band.
         """
         band = self.band if band is None else band
         if self.instrument == 'HARP2':
@@ -82,12 +98,12 @@ class Plot:
 
 
     def setBand(self, band, verbose=True):
-        """Set the band for the plot.
-        Args:
-            band (str): The band for the plot.
+        """
+        Sets the spectral band for plotting.
 
-        Returns:
-            None
+        Args:
+            band (str): The band to set (e.g., 'blue', 'green', 'red', 'nir').
+            verbose (bool, optional): If True, prints the selected band. Defaults to True.
         """
         band_ = band.lower()
         assert band_ in ['blue', 'green', 'red', 'nir', 'swir1', 'swir2',  'all', 'harp2'], 'Invalid band'
@@ -117,12 +133,11 @@ class Plot:
 
 
     def setDPI(self, dpi):
-        """Set the DPI for the plot.
-        Args:
-            dpi (int): The DPI for the plot.
+        """
+        Sets the DPI (dots per inch) for the plots.
 
-        Returns:
-            None
+        Args:
+            dpi (int): The resolution in DPI.
         """
         self.plotDPI = dpi if dpi is not None else None
         print('setting dpi to %d ppi' %self.plotDPI)
@@ -130,12 +145,11 @@ class Plot:
 
 
     def setInstrument(self, instrument=None):
-        """Set the instrument for the plot.
-        Args:
-            instrument (str): The instrument for the plot.
+        """
+        Configures the plotting parameters for a specific instrument.
 
-        Returns:
-            None
+        Args:
+            instrument (str, optional): The name of the instrument. Defaults to the current instrument.
         """
         if instrument is None:
             instrument = self.instrument
@@ -171,16 +185,22 @@ class Plot:
                   axis=None, axisLabel=True, returnHandle=False, title=True,
                   maskFlag=True,
                     **kwargs):
-        """Plot the data for a pixel.
+        """
+        Plots the data for a single pixel.
 
         Args:
-            x (int): The x coordinate of the pixel.
-            y (int): The y coordinate of the pixel.
-            dataVar (str): The variable to plot.
-            xAxis (str): The x-axis variable.
-
-        Returns:
-            None
+            x (int): The x-coordinate of the pixel.
+            y (int): The y-coordinate of the pixel.
+            dataVar (str, optional): The data variable to plot. Defaults to 'i'.
+            xAxis (str, optional): The variable for the x-axis. Defaults to 'scattering_angle'.
+            xlim (tuple, optional): The limits for the x-axis. Defaults to None.
+            ylim (tuple, optional): The limits for the y-axis. Defaults to None.
+            axis (matplotlib.axes.Axes, optional): An existing axes to plot on. Defaults to None.
+            axisLabel (bool, optional): Whether to show axis labels. Defaults to True.
+            returnHandle (bool, optional): Whether to return the figure and axes handles. Defaults to False.
+            title (bool, optional): Whether to show the plot title. Defaults to True.
+            maskFlag (bool, optional): Whether to apply a mask to the data. Defaults to True.
+            **kwargs: Additional keyword arguments for the plot.
         """
         xAxis = self.xAxis if xAxis is None else xAxis
         assert xAxis in ['scattering_angle', 'view_angles', 'intensity_wavelength'], 'Invalid x-axis variable'
@@ -192,9 +212,10 @@ class Plot:
         if axisLabel:
             plt.xlabel(xAxis)
             if unit_:
-                plt.ylabel(f'{dataVar}\n{unit_}')
+                plt.ylabel(f'{dataVar}
+{unit_}')
             elif dataVar != 'dolp':
-                plt.ylabel(r'R$_{%s}$' % dataVar)
+                plt.ylabel(r'R$_{%s} % dataVar)
             elif dataVar == 'dolp':
                 plt.ylabel(dataVar)
 
@@ -210,7 +231,8 @@ class Plot:
             ax_.set_ylim((ylim[0], ylim[1]))
 
         if title:
-            titleStr = f'{self.data["date_time"]} \nPixel ({x}, {y}) of the instrument {self.instrument}'
+            titleStr = f'{self.data["date_time"]} 
+Pixel ({x}, {y}) of the instrument {self.instrument}'
             plt.title(titleStr)
 
         plt.show()
@@ -219,18 +241,18 @@ class Plot:
             return fig_, ax_
         
     def physicalQuantity(self, x=None, y=None, dataVar='i', xAxis='scattering_angle', maskFlag=True):
-        """Get the physical quantity for the plot.
+        """
+        Retrieves the physical quantity for a given pixel and variable.
 
         Args:
-            x (int): The x coordinate of the pixel.
-            y (int): The y coordinate of the pixel.
-            dataVar (str): The variable to plot.
-            xAxis (str): The x-axis variable.
+            x (int, optional): The x-coordinate of the pixel. Defaults to 100.
+            y (int, optional): The y-coordinate of the pixel. Defaults to 200.
+            dataVar (str, optional): The data variable. Defaults to 'i'.
+            xAxis (str, optional): The x-axis variable. Defaults to 'scattering_angle'.
+            maskFlag (bool, optional): Whether to use masked data. Defaults to True.
 
         Returns:
-            xData_ (np.ndarray): The x-axis data.
-            dataVar_ (np.ndarray): The y-axis data.
-            unit_ (str): The unit of the data.
+            tuple: A tuple containing the x-axis data, the y-axis data (the physical quantity), and its unit.
         """
 
         if x is None and y is None:
@@ -296,12 +318,15 @@ class Plot:
         return xData_, dataVar_, unit_
 
     def setFigure(self, figsize=(10, 5), **kwargs):
-        """Set the figure size for the plot.
+        """
+        Sets up the figure and subplots for multi-variable plots.
+
         Args:
-            figsize (tuple): The figure size for the plot.
+            figsize (tuple, optional): The size of the figure. Defaults to (10, 5).
+            **kwargs: Additional keyword arguments for plt.subplots.
 
         Returns:
-            None
+            tuple: A tuple containing the figure and axes objects.
         """
 
         if self.plotAll:
@@ -321,20 +346,18 @@ class Plot:
                      axis=None, axisLabel=True, showUnit=True,
                     **kwargs):
         """
-        Plot all bands for a pixel.
+        Plots multiple variables for a single pixel across different bands.
 
         Args:
-            x (int): The x coordinate of the pixel.
-            y (int): The y coordinate of the pixel.
-            xAxis (str, optional): The x-axis variable. Defaults to 'scattering_angle'.
-            bands (list, optional): List of bands to plot. If None, all bands are plotted. Defaults to None.
-            saveFig (bool, optional): If True, the figure is saved. Defaults to False.
-            axis (matplotlib.axes.Axes, optional): The axes object to draw the plot onto. If None, a new figure and axes are created. Defaults to None.
-            axisLabel (bool, optional): If True, labels are added to the axes. Defaults to True.
-            **kwargs: Variable length argument list to pass to the plot function.
-
-        Returns:
-            None
+            x (int): The x-coordinate of the pixel.
+            y (int): The y-coordinate of the pixel.
+            xAxis (str, optional): The variable for the x-axis. Defaults to 'scattering_angle'.
+            bands (list, optional): A list of bands to plot. Defaults to all bands.
+            saveFig (bool, optional): Whether to save the figure. Defaults to False.
+            axis (matplotlib.axes.Axes, optional): An existing axes to plot on. Defaults to None.
+            axisLabel (bool, optional): Whether to show axis labels. Defaults to True.
+            showUnit (bool, optional): Whether to show the units on the y-axis. Defaults to True.
+            **kwargs: Additional keyword arguments for the plot.
         """
         assert xAxis in ['scattering_angle', 'view_angles'], 'Invalid x-axis variable'
         if bands is None:
@@ -381,9 +404,10 @@ class Plot:
                 # set the labels
                 if axisLabel and j == 0:
                     if (unit_ and showUnit):
-                        axAll[i,j].set_ylabel(f'{vars}\n{unit_}') 
+                        axAll[i,j].set_ylabel(f'{vars}
+{unit_}') 
                     elif self.reflectance:
-                        axAll[i,j].set_ylabel(r'R$_%s$' %vars) if not vars == 'dolp' else axAll[i,j].set_ylabel(vars)
+                        axAll[i,j].set_ylabel(r'R$_%s %vars) if not vars == 'dolp' else axAll[i,j].set_ylabel(vars)
                     else:
                         axAll[i,j].set_ylabel(vars)
                     axAll[i,j].yaxis.set_label_coords(-0.25,0.5)
@@ -391,7 +415,8 @@ class Plot:
                 if axisLabel and i == len(self.vars2plot)-1:
                     axAll[i,j].set_xlabel(xAxis)
 
-        plt.suptitle(f'{self.data["date_time"]} \nPixel ({x}, {y}) of the instrument {self.instrument}')
+        plt.suptitle(f'{self.data["date_time"]} 
+Pixel ({x}, {y}) of the instrument {self.instrument}')
         plt.tight_layout()
         plt.show()
 
@@ -407,19 +432,20 @@ class Plot:
     def plotRGB(self, var='i', viewAngleIdx=[38, 4, 84],
                  scale= 1, normFactor=200, returnRGB=False, autoNorm=False,
                  plot=True, rgb_dolp=False, saveFig=False, **kwargs):
-        """Plot the RGB image of the instrument.
+        """
+        Creates and plots an RGB image.
 
         Args:
-            var (str, optional): The variable to plot. Defaults to 'i'.
-            viewAngleIdx (list, optional): The view angle indices. Defaults to [38, 4, 84].
-            scale (int, optional): The scale factor. Defaults to 1.
-            normFactor (int, optional): The normalization factor. Defaults to 200.
-            returnRGB (bool, optional): If True, the RGB data is returned. Defaults to False.
-            plot (bool, optional): If True, the RGB image is plotted. Defaults to True.
-            **kwargs: Variable length argument list to pass to the plot function.
-
-        Returns:
-            None
+            var (str, optional): The variable to use for the RGB channels. Defaults to 'i'.
+            viewAngleIdx (list, optional): The indices of the view angles for R, G, and B. Defaults to [38, 4, 84].
+            scale (float, optional): A scaling factor for the RGB values. Defaults to 1.
+            normFactor (float, optional): A normalization factor for the RGB values. Defaults to 200.
+            returnRGB (bool, optional): Whether to return the RGB data array. Defaults to False.
+            autoNorm (bool, optional): Whether to automatically normalize the RGB channels. Defaults to False.
+            plot (bool, optional): Whether to display the plot. Defaults to True.
+            rgb_dolp (bool, optional): Whether to create an RGB image from DoLP data. Defaults to False.
+            saveFig (bool, optional): Whether to save the figure. Defaults to False.
+            **kwargs: Additional keyword arguments for the plot.
         """
 
         # find the index to plot
@@ -517,11 +543,17 @@ class Plot:
         if plot:
             plt.imshow(rgb, origin='lower')
             if self.instrument == 'HARP2':
-                plt.title(f'{self.data["date_time"]} \nRGB image of the instrument {self.instrument}\n using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
+                plt.title(f'{self.data["date_time"]} 
+RGB image of the instrument {self.instrument}
+ using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
             elif self.instrument == 'OCI':
-                plt.title(f'{self.data["date_time"]} \nRGB image of the instrument {self.instrument}\n using "{var}" variable at angle {viewAngleIdx[0]}', fontsize=8)
+                plt.title(f'{self.data["date_time"]} 
+RGB image of the instrument {self.instrument}
+ using "{var}" variable at angle {viewAngleIdx[0]}', fontsize=8)
             elif self.instrument == 'SPEXone':
-                plt.title(f'{self.data["date_time"]} \nRGB image of the instrument {self.instrument}\n using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
+                plt.title(f'{self.data["date_time"]} 
+RGB image of the instrument {self.instrument}
+ using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
             plt.show()
 
         if returnRGB:
@@ -539,22 +571,27 @@ class Plot:
                    lakes=True, rivers=False, figsize_=None, ax=None, dpi=300,
                    highResStockImage=False,
                    **kwargs):
-        """ Project a single variable of the data to the earth projection using Cartopy.
+        """ 
+        Projects a single variable onto a geographical map using Cartopy.
         
         Args:
             var (str, optional): The variable to plot. Defaults to 'i'.
-            viewAngleIdx (list, optional): The view angle indices. Defaults to [38].
-            proj (str, optional): The projection method. Defaults to 'PlateCarree'.
-            colorbar (bool, optional): If True, the colorbar is added. Defaults to False.
-            varAlpha (int, optional): The alpha value for the variable. Defaults to 1.
-            stockImage (bool, optional): If True, the stock image is added. Defaults to False.
-            level (str, optional): The level of the data. Defaults to 'L1C'.
-            idx_ (int, optional): The index of the variable. Defaults to 1.
-            saveFig (bool, optional): If True, the figure is saved. Defaults to False.            
-            **kwargs: Variable length argument list to pass to the plot function.
-            
-        Returns:
-            None
+            viewAngleIdx (int, optional): The index of the view angle to plot. Defaults to None.
+            viewAngle (float, optional): The view angle to find the closest index for. Defaults to 0.
+            proj (str, optional): The map projection. Defaults to 'PlateCarree'.
+            colorbar (bool, optional): Whether to show a colorbar. Defaults to True.
+            varAlpha (float, optional): The alpha transparency for the plotted variable. Defaults to 1.
+            stockImage (bool, optional): Whether to show a stock background image. Defaults to False.
+            level (str, optional): The data level. Defaults to 'L1C'.
+            idx_ (int, optional): An index used for L1B data. Defaults to 1.
+            saveFig (bool, optional): Whether to save the figure. Defaults to False.            
+            lakes (bool, optional): Whether to draw lakes. Defaults to True.
+            rivers (bool, optional): Whether to draw rivers. Defaults to False.
+            figsize_ (tuple, optional): The figure size. Defaults to None.
+            ax (matplotlib.axes.Axes, optional): An existing axes to plot on. Defaults to None.
+            dpi (int, optional): The resolution of the figure. Defaults to 300.
+            highResStockImage (bool, optional): Whether to use a high-resolution stock image. Defaults to False.
+            **kwargs: Additional keyword arguments for the plot.
         """
 
         # Check the number of indices
@@ -680,7 +717,8 @@ class Plot:
             ax.set_ymargin(0.05)
 
             # round the view angle to 2 decimal places
-            ax.set_title(f'${var}{{({self.band})}}$ at {round(float(viewAngle), 2)}° viewing angle \nof the instrument {self.instrument}')
+            ax.set_title(f'${var}{{({self.band})}}$ at {round(float(viewAngle), 2)}° viewing angle 
+of the instrument {self.instrument}')
             plt.show()
 
             if saveFig:
@@ -689,14 +727,14 @@ class Plot:
                 print(f'...Figure saved at {location}')
 
     def reflectanceChange(self, var):
-        """Change the variable to reflectance if reflectance is True.
+        """
+        Changes the variable name to indicate reflectance if the reflectance flag is set.
 
         Args:
-            var (str): The variable to change.
+            var (str): The variable name.
 
         Returns:
-            var (str): The variable to reflectance.
-            units_ (str): The units of the variable.
+            tuple: A tuple containing the modified variable name and its unit.
         """
 
         # if reflectance is True, change the varstring to reflectance only for ['i', 'q', 'u']
@@ -716,20 +754,35 @@ class Plot:
                      returnRGB=False, lon_0=None, lat_0=None, black_background=True,
                      proj_size=None, returnTransitionFlag=False, highResStockImage=False,
                      **kwargs):
-        """Plot the projected RGB image of the instrument using Cartopy.
+        """
+        Plots a projected RGB image using Cartopy.
 
         Args:
-            rgb (np.ndarray, optional): The RGB data. Defaults to None.
-            scale (int, optional): The scale factor. Defaults to 1.
-            ax (matplotlib.axes.Axes, optional): The axes object to draw the plot onto. If None, a new figure and axes are created. Defaults to None.
-            var (str, optional): The variable to plot. Defaults to 'i'.
-            viewAngleIdx (list, optional): The view angle indices. Defaults to [38, 4, 84].
-            normFactor (int, optional): The normalization factor. Defaults to 200.
-            proj (str, optional): The projection method. Defaults to 'PlateCarree'.
-            **kwargs: Variable length argument list to pass to the plot function.
-
-        Returns:
-            None
+            rgb (np.ndarray, optional): The RGB data to plot. Defaults to None.
+            scale (float, optional): A scaling factor for the RGB values. Defaults to 1.
+            ax (matplotlib.axes.Axes, optional): An existing axes to plot on. Defaults to None.
+            fig (matplotlib.figure.Figure, optional): An existing figure to plot on. Defaults to None.
+            var (str, optional): The variable to use for the RGB channels. Defaults to 'i'.
+            viewAngleIdx (list, optional): The indices of the view angles for R, G, and B. Defaults to [36, 4, 84].
+            normFactor (float, optional): A normalization factor for the RGB values. Defaults to 200.
+            proj (str, optional): The map projection. Defaults to 'PlateCarree'.
+            saveFig (bool, optional): Whether to save the figure. Defaults to False.
+            noShow (bool, optional): If True, the plot is not displayed. Defaults to False.
+            rivers (bool, optional): Whether to draw rivers. Defaults to False.
+            lakes (bool, optional): Whether to draw lakes. Defaults to False.
+            rgb_dolp (bool, optional): Whether to create an RGB image from DoLP data. Defaults to False.
+            figsize (tuple, optional): The figure size. Defaults to None.
+            savePath (str, optional): The path to save the figure. Defaults to None.
+            dpi (int, optional): The resolution of the figure. Defaults to None.
+            setTitle (bool, optional): Whether to show the plot title. Defaults to True.
+            returnRGB (bool, optional): Whether to return the projected RGB data. Defaults to False.
+            lon_0 (float, optional): The central longitude for the projection. Defaults to None.
+            lat_0 (float, optional): The central latitude for the projection. Defaults to None.
+            black_background (bool, optional): Whether to use a black background. Defaults to True.
+            proj_size (tuple, optional): The size of the projected image. Defaults to None.
+            returnTransitionFlag (bool, optional): Whether to return the dateline transition flag. Defaults to False.
+            highResStockImage (bool, optional): Whether to use a high-resolution stock image. Defaults to False.
+            **kwargs: Additional keyword arguments for the plot.
         """
         assert proj.lower() in ['platecarree', 'orthographic', 'none'], 'Invalid projection method currently only PlateCarree and Orthographic are supported'
         self.plotDPI = dpi if dpi is not None else self.plotDPI
@@ -856,7 +909,8 @@ class Plot:
                 # set the title using the date_time
                 fontColor = 'tan' if black_background else 'black'
                 if ax is not None:
-                    ax.set_title(f'RGB image of the instrument {self.instrument}\n {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
+                    ax.set_title(f'RGB image of the instrument {self.instrument}
+ {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
 
             plt.box(on=None)
             plt.show() if not noShow else None
@@ -884,33 +938,17 @@ class Plot:
 
 
     def meshgridRGB(self, LON, LAT, proj_size=(900,400), return_mapdata=False):
-        """Project the RGB data using meshgrid.
+        """
+        Projects RGB data onto a regular grid using meshgrid interpolation.
 
-        This function takes longitude and latitude data along with optional parameters and returns the projected RGB data.
-        
         Args:
-            self (object): The instance of the class.
             LON (np.ndarray): The longitude data.
             LAT (np.ndarray): The latitude data.
-            proj_size (tuple, optional): The size of the projection. Defaults to (905,400).
-            return_mapdata (bool, optional): If True, the map data is returned. Defaults to False.
-                
+            proj_size (tuple, optional): The size of the projected grid. Defaults to (900,400).
+            return_mapdata (bool, optional): If True, returns additional map data. Defaults to False.
+
         Returns:
-            np.ndarray: The projected RGB data.
-            
-        Raises:
-            None
-            
-        Examples:
-            # Create an instance of the class
-            plot = Plot()
-            
-            # Define longitude and latitude data
-            lon_data = np.array([0, 1, 2, 3, 4])
-            lat_data = np.array([0, 1, 2, 3, 4])
-            
-            # Call the meshgridRGB function
-            rgb_data = plot.meshgridRGB(lon_data, lat_data)
+            tuple: A tuple containing the projected RGB data and other optional map data.
         """
         # for each color channel, the code sets the border pixels of the image to 0. 
         rr = self.rgb[:,:,0]
@@ -1015,18 +1053,16 @@ class Plot:
     #------------------------------------------------------------------------------------------
     def GridRGB(self, lon, lat, dateline=True, proj_size=(900,400)):
         """
-        Interpolates RGB values onto a grid regularly spaced grid by longitude and latitude coordinates.
+        Interpolates RGB values onto a regularly spaced grid.
 
         Args:
-            self (object): The instance of the class.
-            lon (ndarray): 2-D array of longitude values from L1C.
-            lat (ndarray): 2-D array of latitude values from L1C.
-            dateline (bool, optional): Specifies whether the dateline is present in the longitude values. 
-                Defaults to True.
+            lon (np.ndarray): 2D array of longitude values.
+            lat (np.ndarray): 2D array of latitude values.
+            dateline (bool, optional): Whether the data crosses the dateline. Defaults to True.
+            proj_size (tuple, optional): The size of the output grid. Defaults to (900,400).
 
         Returns:
-            tuple: A rgb image array containing the interpolated RGB values as a 3-D array and the extent of the grid for imshow.
-
+            tuple: A tuple containing the regridded RGB data and the extent of the grid.
         """
         # Create a 3D array to store the RGB data
         tmp_r = self.rgb[:,:,0]
@@ -1109,6 +1145,15 @@ class Plot:
         return new_rgb, ext
         
     def average_longitude(self, longitudes):
+        """
+        Calculates the average longitude, handling the circular nature of longitude data.
+
+        Args:
+            longitudes (np.ndarray): An array of longitude values.
+
+        Returns:
+            tuple: A tuple containing the mean longitude, minimum longitude, and maximum longitude.
+        """
         # Convert longitudes to radians
         longitudes_rad = np.radians(longitudes)
 
@@ -1140,3 +1185,4 @@ class Plot:
 #---------------------------------------------------
 # End of the class Plot
 #---------------------------------------------------
+''

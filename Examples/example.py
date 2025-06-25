@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Working_Data/PACE/PACE_OCI_SIM.20220320T235823.L1C.5km.V11.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE/07-24/PACE_HARP2.20240724T174610.L1C.V2.5km.nc'
 
 # Read the file
 l1c = L1.L1C(instrument='OCI')

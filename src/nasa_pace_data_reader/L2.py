@@ -1,37 +1,39 @@
-# Imports
+# Standard library and third-party imports for data handling, plotting, and scientific computation.
 import os
-from netCDF4 import Dataset
 import datetime
+import numpy as np
+from netCDF4 import Dataset
+from scipy import interpolate
+
+# Matplotlib and related imports for plotting.
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import numpy as np
-from scipy import interpolate
 
-# cartopy related imports
+# Cartopy imports for geographical plotting.
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 class L2:
-    """Class for reading
-        NASA PACE Level 2 product files.
-        
+    """
+    A class for reading and processing NASA PACE Level 2 product files.
+    This class is primarily designed for HARP2 data processed with the GRASP-Anin algorithm.
     """
 
     def __init__(self):
-        """Initializes the class."""
+        """Initializes the L2 data reader class."""
         self.instrument = 'HARP2'   # Default instrument
         self.product = 'GRASP-Anin' # Default product
         self.var_units = {}
         self.setInstrument()
 
     def setInstrument(self, instrument=None):
-        """Sets the instrument.
-        
-        Args:
-            instrument (str): The instrument name.
+        """
+        Configures the class for a specific instrument and product.
 
+        Args:
+            instrument (str, optional): The name of the instrument. Defaults to 'HARP2'.
         """
         self.instrument = instrument if instrument else 'HARP2'
         self.l2product = self.instrument + '-' + self.product
@@ -39,7 +41,7 @@ class L2:
         match self.l2product.lower():
 
             case 'harp2-grasp-anin':
-
+                # Define the names of geolocation, geophysical, and diagnostic variables.
                 self.geoNames = ['latitude', 'longitude']
                 self.geophysicalNames = ['aot', 'aot_fine', 'aot_coarse', 'fmf',
                                          'mi', 'mr',
@@ -52,14 +54,14 @@ class L2:
                 self.diagnosticNames = ['chi2', 'n_iter', 'quality_flag']
 
     def read(self, filename):
-        """Reads the data from the file.
-        
+        """
+        Reads data from a specified L2 file.
+
         Args:
-            filename (str): The name of the file to read.
+            filename (str): The path to the L2 file.
 
         Returns:
-            dict: A dictionary containing the data.
-
+            dict: A dictionary containing the data from the file.
         """
         
 
@@ -79,32 +81,28 @@ class L2:
             # HACK: get the date time from the filename 
             data['date_time'] = dataNC.date_created
 
-            # Access the 'geophysical_data' & 'geolocation_data' group
+            # Access the different data groups within the NetCDF file.
             geophysical_data = dataNC.groups['geophysical_data']
             geo_data = dataNC.groups['geolocation_data']
             sensor_data = dataNC.groups['sensor_band_parameters']
             diagnostic_data = dataNC.groups['diagnostic_data']
 
-            # diagnostic data
+            # Read diagnostic data.
             for var in self.diagnosticNames:
                 data[var] = diagnostic_data.variables[var][:]
 
-            # Define the variable names
+            # Read geolocation data.
             geo_names = self.geoNames
-
-            # Read the variables
             for var in geo_names:
                 data[var] = geo_data.variables[var][:]
 
-            # Read the data
+            # Read geophysical data.
             geophysical_names = self.geophysicalNames
-
             data['_units'] = {}
             for var in geophysical_names:
                 try:
                     data[var] = geophysical_data.variables[var][:]
-
-                    # read the units for the variable
+                    # Store the units for each variable.
                     data['_units'][var] = geophysical_data.variables[var].units
                     self.unit(var, geophysical_data.variables[var].units)
                 except KeyError as e:
@@ -112,15 +110,15 @@ class L2:
                     print('Error:', e)
                     print('Maybe the file is L1C experimental?')
 
-            # read the F0 and unit
+            # Read sensor band parameters.
             data['wavelengths'] = sensor_data.variables['wavelength'][:]
             data['_units']['wavelengths'] = sensor_data.variables['wavelength'].units
             self.unit(var, geophysical_data.variables[var].units)
 
-            # close the netCDF file
+            # Close the NetCDF file.
             dataNC.close()
 
-            # add to the object
+            # Store the data dictionary in the class instance.
             self.l2_dict = data
 
             return data
@@ -134,22 +132,28 @@ class L2:
             dataNC.close()
 
     def unit(self, var, units):
-            """Returns the units for the variable."""
+            """
+            Stores the units for a given variable.
+
+            Args:
+                var (str): The variable name.
+                units (str): The unit string.
+            """
             self.var_units[var] = units 
     
     def checkFile(self, filename):
-        """Checks if the file is a correct L2 file.
-        
+        """
+        Checks if the file is a valid L2 file for the specified product.
+
         Args:
             filename (str): The name of the file to check.
 
         Returns:
-            bool: True if the file is correct, False otherwise.
-
+            bool: True if the file is a valid L2 file, False otherwise.
         """
         try:
             dataNC = Dataset(filename, 'r')
-            # check if the metadata is present and is correct
+            # Check for the presence and correctness of the 'title' attribute.
             if 'title' not in dataNC.ncattrs():
                 dataNC.close()
                 return False
@@ -171,32 +175,40 @@ class L2:
                    chi2Mask=None, saveFig=False, rgb_extent=None,
                    horizontalColorbar=False, limitTriangle= [0, 0],
                 **kwargs):
-        """Plots the variable in a specific projection.
+        """
+        Plots a specified variable on a geographical projection.
 
         Args:
             var (str): The variable to plot.
-            viewAngle (float): The viewing angle.
-            proj (str): The projection to use.
-            dpi (int): The resolution of the plot.
-
+            wavelength (float, optional): The wavelength to plot. Defaults to 550 nm.
+            proj (str, optional): The map projection to use. Defaults to 'PlateCarree'.
+            dpi (int, optional): The resolution of the plot. Defaults to 300.
+            noAxisTicks (bool, optional): If True, axis ticks are not shown. Defaults to False.
+            black_background (bool, optional): If True, the plot background is black. Defaults to False.
+            ax (matplotlib.axes.Axes, optional): An existing axes object to plot on. Defaults to None.
+            fig (matplotlib.figure.Figure, optional): An existing figure object. Defaults to None.
+            chi2Mask (np.ndarray, optional): A mask to apply to the data based on chi-squared values. Defaults to None.
+            saveFig (bool, optional): If True, the figure is saved. Defaults to False.
+            rgb_extent (list, optional): The extent of the plot. Defaults to None.
+            horizontalColorbar (bool, optional): If True, a horizontal colorbar is used. Defaults to False.
+            limitTriangle (list, optional): Specifies if triangles should be added to the colorbar limits. Defaults to [0, 0].
+            **kwargs: Additional keyword arguments for the plotting function.
         """
         assert proj in ['PlateCarree', 'Orthographic'], 'Error: Invalid projection.'
-        # assert var in self.diagnosticNames[:] or var in self.geophysicalNames[:], 'Error: Invalid variable.'
         
-        # no viewing angle only wavelength
         lat = self.l2_dict['latitude']
         lon = self.l2_dict['longitude']
 
-        # wavelength
+        # Set the wavelength for the plot.
         if wavelength is None:
             wavelength = 550
         else:
             assert wavelength in self.l2_dict['wavelengths'], 'Error: Invalid wavelength.'
 
-        # get the index of the wavelength
+        # Get the index for the specified wavelength.
         idx = np.where(self.l2_dict['wavelengths'] == wavelength)[0][0]
 
-        # get the variable
+        # Get the data for the specified variable.
         if var in ['chi2', 'n_iter', 'quality_flag',
                         'reff_coarse', 'reff_fine', 'vd',
                         'windspeed', 'angstrom', 'alh', 'spherFrac']:
@@ -204,19 +216,17 @@ class L2:
         else:
             data = self.l2_dict[var][:, :, idx]
 
-        # create the plot
+        # Create the plot figure and axes.
         if ax is None:
             fig = plt.figure(figsize=(3, 3), dpi=dpi)
             ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
         if black_background:
-            # Set the background color to black
+            # Configure plot for a black background.
             fig.patch.set_facecolor('black')
-            # set the font color to white
             plt.rcParams['text.color'] = 'tan'
             plt.rcParams['axes.labelcolor'] = 'grey'
             plt.rcParams['xtick.color'] = 'tan'
             plt.rcParams['ytick.color'] = 'tan'
-            # title font color
             plt.rcParams['axes.titlecolor'] = 'white'
             plt.rcParams['axes.edgecolor'] = 'tan'
             plt.rcParams['axes.facecolor'] = 'tan'
@@ -224,21 +234,21 @@ class L2:
 
         ax.set_title(f'{var} at {wavelength} nm')
         ax.coastlines()
-        # background
+        # Add geographical features to the plot.
         ax.add_feature(cfeature.LAND, alpha=0.5)
         ax.add_feature(cfeature.OCEAN, alpha=0.5)
         ax.add_feature(cfeature.LAKES, alpha=0.1)
         ax.add_feature(cfeature.RIVERS, alpha=0.1)
-        # ax.add_feature(cfeature.BORDERS, linestyle='--', lw=0.5)
 
-        # plot the variable
-        # mask data if chi2mask is provided
+        # Plot the data.
         if chi2Mask is not None:
             data = np.ma.masked_where(chi2Mask, data)
         if rgb_extent is not None:
             im = ax.imshow(data, origin='lower', extent=rgb_extent, transform=ccrs.PlateCarree(), **kwargs)
         else:
             im = ax.pcolormesh(lon, lat, data, transform=ccrs.PlateCarree(), **kwargs)
+        
+        # Add a colorbar.
         divider = make_axes_locatable(ax)
         if horizontalColorbar:
             ax_cb = divider.new_vertical(size="5%", pad=0.65, axes_class=plt.Axes)
@@ -247,13 +257,10 @@ class L2:
 
         fig.add_axes(ax_cb)
 
-        # add horizontal colorbar
         orientation = 'vertical'
         if horizontalColorbar:
             orientation = 'horizontal'
-            # vmax in kwargs then end of the colorbar with a triangle
             if 'vmax' in kwargs or 'vmin' in kwargs:
-                # add a triangle at the end of the colorbar if vmax and vmin are provided
                 if 'vmax' in kwargs and 'vmin' in kwargs:
                     if limitTriangle[0] and limitTriangle[1]:
                         plt.colorbar(im, cax=ax_cb, orientation=orientation, extend='both')
@@ -265,7 +272,6 @@ class L2:
                 plt.colorbar(im, cax=ax_cb, orientation=orientation)
         else:
             if 'vmax' in kwargs or 'vmin' in kwargs:
-                # add a triangle at the end of the colorbar if vmax and vmin are provided
                 if limitTriangle[0] and limitTriangle[1]:
                     plt.colorbar(im, cax=ax_cb, orientation=orientation, extend='both')
                 elif limitTriangle[0]:
@@ -275,35 +281,21 @@ class L2:
             else:
                 plt.colorbar(im, cax=ax_cb)
 
-        # set colorbar label
+        # Set the colorbar label.
         if var not in ['chi2', 'n_iter', 'quality_flag']:
             plt.colorbar(im, cax=ax_cb, orientation=orientation).set_label(self.var_units[var])
 
-        # # add gridlines and lat lon labels
-        # if not noAxisTicks and ax is not None:
-        #     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
-        #                     linewidth=0.2, color='gray', alpha=0.2, linestyle='--')
-        #     gl.xlabels_top = False
-        #     gl.ylabels_right = False
-        #     gl.xformatter = LONGITUDE_FORMATTER
-        #     gl.yformatter = LATITUDE_FORMATTER
-        #     gl.xlabel_style = {'size': 8}
-        #     gl.ylabel_style = {'size': 8}
-        #     gl.xlabel_text = True
-        #     gl.ylabel_text = True
-
         if black_background:
-            #reset the font color
+            # Reset plot parameters to default.
             plt.rcParams['text.color'] = 'black'
             plt.rcParams['axes.labelcolor'] = 'black'
             plt.rcParams['xtick.color'] = 'black'
             plt.rcParams['ytick.color'] = 'black'
-            # title font color
             plt.rcParams['axes.titlecolor'] = 'black'
             plt.rcParams['axes.edgecolor'] = 'black'
             plt.rcParams['axes.facecolor'] = 'white'
 
-        # save the image withouth the axis and gridlines with the transparent background
+        # Save the figure if requested.
         if saveFig:
             fig.savefig(f'{var}_wavelength_{wavelength}_nm.png', dpi=dpi, transparent=True)
         
