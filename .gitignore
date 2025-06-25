@@ -164,3 +164,4 @@ Examples/i*.txt
 
 Examples/*.png
 Examples/1146/*
+src/nasa_pace_data_reader/nasa_pace_data_reader
