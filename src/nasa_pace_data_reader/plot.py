@@ -797,7 +797,8 @@ class Plot:
             else:
                 ax = ax
             if highResStockImage:
-                ax.background_img(name='BlueMarble', resolution='high')
+                print('Not using the basemap')
+                # ax.background_img(name='BlueMarble', resolution='high')
             else:
                 ax.stock_img()
             if fig is not None:

@@ -1,5 +1,7 @@
 from nasa_pace_data_reader import L1, L2, plot
 import copy
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 from matplotlib import pyplot as plt
 import os
 import numpy as np
@@ -10,6 +12,9 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 # suppress warnings
 import warnings
 warnings.filterwarnings("ignore")
+
+# Set the C059 font for all plots
+plt.rcParams.update({'font.family': 'Avenir'})
 
 # Local function to project the variable and copy the figure and axis
 
@@ -29,36 +34,38 @@ def project_and_copy(l2, var, fig_base_, ax_base_, return_= False, **kwargs):
 # ---- Change the following parameters ---- #
 
 # location of the L2 file
-fileName = '/Users/aputhukkudy/Downloads/PACE/L2/2p6/PACE_HARP2.20241102T071117.L1C.V2.5km-v0.2.6.IDOLP_3px.nc'
+fileName = '/Users/aputhukkudy/Downloads/PACE_HARP2.20250612T120401.L1C.V3.5km-v0.3.1.VM-Talk-USP.nc'
 # fileName2 = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/PACE_HARP2.20240907T172952.L1C.V2.5km-v0.2.4.IDOLP-test.nc'
 
 # l1c file location
-l1c_file = '/Users/aputhukkudy/Downloads/PACE_HARP2.20241102T071117.L1C.V2.5km.nc'
+l1c_file = '/Users/aputhukkudy/Downloads/PACE_HARP2.20250612T120401.L1C.V3.5km.nc'
 
 # save the plots in a folder
-saveDir = '/Users/aputhukkudy/Downloads/PACE/L2/2p6/20241102T071117/'
+saveDir = '/Users/aputhukkudy/Downloads/PACE/L2/VM-USP-Jun-2025/0612T1204'
 
-dpi = 160
+dpi = 240
 cmap = 'Spectral_r'
 
 # chi2 filtering filter chi2 values greater than chiMax or chiMin
-chiMax = 8
+chiMax = 15
 chiMin = 0.01
 l2_chi2_mask = True # None to not use it, True to use it
 
 # filtering the retrieved products based on the min AOD value
-minAOD_550 = 0.25
+minAOD_550 = 0.4
 AOD_mask = True     # None to not use it, True to use it
 
 # extents of the plot
-AOD = [0, 1]
+AOD = [0, 3]
 SSA = [0.85, 1]
+ALH = [500, 7000]
 Reff_coarse = [0.5, 3]
 Reff_fine = [0.08, 0.35]
 VD = [0, 0.5]
 MR = [1.33, 1.7]
 MI = [0, 0.1]
 AE = [-0.2, 3]
+
 
 # ---- Do not change anything below this line ---- #
 
@@ -128,6 +135,9 @@ fig_test, ax_test = project_and_copy(l2, 'reff_fine', fig_, ax_, return_= True, 
 
 fig_, ax_ = copy.deepcopy((fig_base, ax_base))
 project_and_copy(l2, 'vd', fig_, ax_, **common_params)
+
+fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+project_and_copy(l2, 'alh', fig_, ax_, vmin=ALH[0], vmax=ALH[1], **common_params)
 
 fig_, ax_ = copy.deepcopy((fig_base, ax_base))
 project_and_copy(l2, 'mr', fig_, ax_, wavelength=550, vmin=MR[0], vmax=MR[1], **common_params)
