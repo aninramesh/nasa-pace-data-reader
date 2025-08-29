@@ -164,3 +164,4 @@ Examples/i*.txt
 
 Examples/*.png
 Examples/1146/*
+Examples/.claude/settings.local.json

@@ -5,33 +5,36 @@ import importlib
 
 # suppress warnings
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # Location of the file
-fileName = '/Users/aputhukkudy/Working_Data/PACE/PACE_OCI_SIM.20220320T235823.L1C.5km.V11.nc'
+fileName = (
+    "/Users/aputhukkudy/Working_Data/PACE/PACE_OCI_SIM.20220320T235823.L1C.5km.V11.nc"
+)
 
 # Read the file
-l1c = L1.L1C(instrument='OCI')
+l1c = L1.L1C(instrument="OCI")
 l1c_dict = l1c.read(fileName)
 
 # Print the keys and the shape of the data
 l1c_dict.keys()
 for key in l1c_dict.keys():
-    if key != '_units':
-        print('{:<24}:{}'.format(key, l1c_dict[key].shape))
+    if key != "_units":
+        print("{:<24}:{}".format(key, l1c_dict[key].shape))
 
 # Define the pixel
-pixel = [390,300]
+pixel = [390, 300]
 
 # Load the plot class (default instrument is HARP2)
-plt_ = plot.Plot(l1c_dict, instrument = 'OCI')
+plt_ = plot.Plot(l1c_dict, instrument="OCI")
 
 # set which band to plot
-band = 'Blue'
+band = "Blue"
 plt_.setBand(band)
 
 # Read the 'i' for a pixel
-iStr ='I'
+iStr = "I"
 i = l1c_dict[iStr][pixel[0], pixel[1], plt_.bandAngles]
 # print('%s:' %iStr, i )
 # print('viewing angles:', l1c_dict['view_angles'][plt_.bandAngles])
@@ -39,14 +42,24 @@ i = l1c_dict[iStr][pixel[0], pixel[1], plt_.bandAngles]
 plt_.setDPI(256)
 
 # Plot the pixel (By default plotting radiance)
-plt_.setBand('all')
+plt_.setBand("all")
 
-plt_.plotPixel(pixel[0], pixel[1], dataVar='I', linewidth=0.5, alpha=0.5)
+plt_.plotPixel(pixel[0], pixel[1], dataVar="I", linewidth=0.5, alpha=0.5)
 
 # plot reflectance
 plt_.reflectance = True
-plt_.plotPixel(pixel[0], pixel[1], dataVar='I',  color= 'r',
-               linewidth=0.5, alpha=0.5, ms=1, marker='o', linestyle='-', label='Reflectance')
+plt_.plotPixel(
+    pixel[0],
+    pixel[1],
+    dataVar="I",
+    color="r",
+    linewidth=0.5,
+    alpha=0.5,
+    ms=1,
+    marker="o",
+    linestyle="-",
+    label="Reflectance",
+)
 
 
 # Plot the pixel reflectance

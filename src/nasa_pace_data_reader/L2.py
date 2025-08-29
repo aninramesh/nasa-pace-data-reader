@@ -197,6 +197,7 @@ class L2:
         limitTriangle=[0, 0],
         savePath=None,
         aod_mask=None,
+        aod_high_mask=None,
         **kwargs,
     ) -> None:
         """Plots the variable in a specific projection.

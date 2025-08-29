@@ -2,6 +2,9 @@ import os
 from netCDF4 import Dataset  # type: ignore
 import datetime
 from typing import Dict
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class L1C:
@@ -168,17 +171,18 @@ class L1C:
 
         """
 
-        print(f"Reading {self.instrument} data from {filename}")
+        logger.info(f"Reading {self.instrument} data from {filename}")
 
         correctFile = self.checkFile(filename)
         if not correctFile:
-            print(f"Error: {filename} does not contain {self.instrument} data.")
-            return
-
-        dataNC = Dataset(filename, "r")
-        data = {}
+            message = f"{filename} does not contain {self.instrument} data."
+            logger.error(message)
+            raise ValueError(message)
 
         try:
+            dataNC = Dataset(filename, "r")
+            data = {}
+
             # get the date time from the filename
             data["date_time"] = self.dateStr(filename)
 
@@ -199,8 +203,11 @@ class L1C:
                 try:
                     data[var] = geo_data.variables[var][:]
                 except KeyError as e:
-                    print(f"Error: {filename} does not contain the required variables.")
-                    print("Error:", e)
+                    message = (
+                        f"{filename} does not contain the required variable: {var}"
+                    )
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             # Read the data
             obs_names = self.obsNames
@@ -214,35 +221,55 @@ class L1C:
                     data["_units"][var] = obs_data.variables[var].units
                     self.unit(var, obs_data.variables[var].units)
                 except KeyError as e:
-                    print(f"Error: {filename} does not contain the required variables.")
-                    print("Error:", e)
-                    print("Maybe the file is L1C experimental?")
+                    message = f"{filename} does not contain the required variable: {var}. Maybe the file is L1C experimental?"
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             # read the F0 and unit
-            data["F0"] = sensor_data.variables[self.F0Str][:]
-            data["_units"]["F0"] = sensor_data.variables[self.F0Str].units
-            self.unit(var, obs_data.variables[var].units)
+            try:
+                data["F0"] = sensor_data.variables[self.F0Str][:]
+                data["_units"]["F0"] = sensor_data.variables[self.F0Str].units
+                self.unit("F0", sensor_data.variables[self.F0Str].units)
+            except KeyError as e:
+                message = (
+                    f"{filename} does not contain the required variable: {self.F0Str}"
+                )
+                logger.error(message)
+                raise ValueError(message) from e
 
             # read the band angles and wavelengths
-            data["view_angles"] = sensor_data.variables[self.VAStr][:]
-            data["intensity_wavelength"] = sensor_data.variables[self.wavelengthsStr][:]
+            try:
+                data["view_angles"] = sensor_data.variables[self.VAStr][:]
+                data["intensity_wavelength"] = sensor_data.variables[
+                    self.wavelengthsStr
+                ][:]
+            except KeyError as e:
+                message = f"{filename} does not contain the required variable: {self.VAStr} or {self.wavelengthsStr}"
+                logger.error(message)
+                raise ValueError(message) from e
 
             # Polarization based F0 might be needed for SPEXone, since their spectral response is polarization dependent
             if self.instrument == "SPEXone":
-                data["polarization_wavelength"] = sensor_data.variables[self.PolWav][:]
-                data["polarization_f0"] = sensor_data.variables[self.PolF0][:]
+                try:
+                    data["polarization_wavelength"] = sensor_data.variables[
+                        self.PolWav
+                    ][:]
+                    data["polarization_f0"] = sensor_data.variables[self.PolF0][:]
+                except KeyError as e:
+                    message = f"{filename} does not contain the required polarization variables for SPEXone"
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             # close the netCDF file
             dataNC.close()
 
             return data
 
-        except KeyError as e:
-            print(f"Error: {filename} does not contain the required variables.")
-            print("Error:", e)
-
-            # close the netCDF file
-            dataNC.close()
+        except Exception as e:
+            logger.error(f"Unexpected error reading {filename}: {str(e)}")
+            if "dataNC" in locals():
+                dataNC.close()
+            raise
 
 
 class L1B:
@@ -328,17 +355,18 @@ class L1B:
 
         """
 
-        print(f"Reading {self.instrument} {self.product} data from {filename}")
+        logger.info(f"Reading {self.instrument} {self.product} data from {filename}")
 
         correctFile = self.checkFile(filename)
         if not correctFile:
-            print(f"Error: {filename} does not contain {self.instrument} data.")
-            return
-
-        dataNC = Dataset(filename, "r")
-        data = {}
+            message = f"{filename} does not contain {self.instrument} data."
+            logger.error(message)
+            raise ValueError(message)
 
         try:
+            dataNC = Dataset(filename, "r")
+            data = {}
+
             # Access the 'observation_data' & 'geolocation_data' group
             obs_data = dataNC.groups["observation_data"]
             geo_data = dataNC.groups["geolocation_data"]
@@ -352,7 +380,14 @@ class L1B:
 
             # Read the variables
             for var in geo_names:
-                data[var] = geo_data.variables[var][:]
+                try:
+                    data[var] = geo_data.variables[var][:]
+                except KeyError as e:
+                    message = (
+                        f"{filename} does not contain the required variable: {var}"
+                    )
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             # Read the data
             obs_names = self.obsNames
@@ -366,19 +401,21 @@ class L1B:
                     data["_units"][var] = obs_data.variables[var].units
                     self.unit(var, obs_data.variables[var].units)
                 except KeyError as e:
-                    print(f"Error: {filename} does not contain the required variables.")
-                    print("Error:", e)
-                    print("Maybe the file is L1B experimental?")
-
-            # read the F0 and unit
-            # data['F0'] = sensor_data.variables['intensity_F0'][:] # FIXME: This is not available in L1B
-            # data['_units']['F0'] = sensor_data.variables['intensity_F0'].units # FIXME: This is not available in L1B
-            # self.unit(var, obs_data.variables[var].un1its) # FIXME: This is not available in L1B
+                    message = f"{filename} does not contain the required variable: {var}. Maybe the file is L1B experimental?"
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             # read the band angles and wavelengths
-            data["view_angles"] = sensor_data.variables["sensor_view_angle"][:]
-            data["intensity_wavelength"] = sensor_data.variables[self.wavelengthsStr][:]
-            data["F0"] = sensor_data.variables["intensity_f0"][:]
+            try:
+                data["view_angles"] = sensor_data.variables["sensor_view_angle"][:]
+                data["intensity_wavelength"] = sensor_data.variables[
+                    self.wavelengthsStr
+                ][:]
+                data["F0"] = sensor_data.variables["intensity_f0"][:]
+            except KeyError as e:
+                message = f"{filename} does not contain the required sensor variables"
+                logger.error(message)
+                raise ValueError(message) from e
 
             # FIXME: Polarization based F0 might be needed for SPEXone, since their spectral response is polarization dependent
 
@@ -387,12 +424,11 @@ class L1B:
 
             return data
 
-        except KeyError as e:
-            print(f"Error: {filename} does not contain the required variables.")
-            print("Error:", e)
-
-            # close the netCDF file
-            dataNC.close()
+        except Exception as e:
+            logger.error(f"Unexpected error reading {filename}: {str(e)}")
+            if "dataNC" in locals():
+                dataNC.close()
+            raise
 
 
 class L1beta:
@@ -408,45 +444,58 @@ class L1beta:
 
     def read(self, filename: str) -> Dict:
         """Reads the data from the file."""
-        print(f"Reading {self.instrument} data from {filename}")
-
-        dataNC = Dataset(filename, "r")
-
-        # define the groups
-        img_data = dataNC.groups["IMAGE_DATA"]
-        nav_data = dataNC.groups["NAVIGATION"]
-
-        # define the variables
-        img_data_vars = [
-            "image_0",
-            "image_45",
-            "image_90",
-            "image_135",
-            "Latitude",
-            "Longitude",
-            "Surface_Altitude",
-        ]
-        nav_data_vars = ["JD", "Date", "Time"]
-
-        # define output dict
-        data = {}
+        logger.info(f"Reading {self.instrument} data from {filename}")
 
         try:
+            dataNC = Dataset(filename, "r")
+
+            # define the groups
+            img_data = dataNC.groups["IMAGE_DATA"]
+            nav_data = dataNC.groups["NAVIGATION"]
+
+            # define the variables
+            img_data_vars = [
+                "image_0",
+                "image_45",
+                "image_90",
+                "image_135",
+                "Latitude",
+                "Longitude",
+                "Surface_Altitude",
+            ]
+            nav_data_vars = ["JD", "Date", "Time"]
+
+            # define output dict
+            data = {}
+
             # load the variables from the group img_data
             for key_ in img_data_vars:
-                data[key_] = img_data.variables[key_][:]
+                try:
+                    data[key_] = img_data.variables[key_][:]
+                except KeyError as e:
+                    message = (
+                        f"{filename} does not contain the required variable: {key_}"
+                    )
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             for key_ in nav_data_vars:
-                data[key_] = nav_data.variables[key_][:]
+                try:
+                    data[key_] = nav_data.variables[key_][:]
+                except KeyError as e:
+                    message = (
+                        f"{filename} does not contain the required variable: {key_}"
+                    )
+                    logger.error(message)
+                    raise ValueError(message) from e
 
             # close the netCDF file
             dataNC.close()
 
-        except KeyError:
-            print(f"Error: {filename} does not contain the required variables.")
+            return data
 
-            # close the netCDF file
-            dataNC.close()
-
-        # return the data
-        return data
+        except Exception as e:
+            logger.error(f"Unexpected error reading {filename}: {str(e)}")
+            if "dataNC" in locals():
+                dataNC.close()
+            raise
