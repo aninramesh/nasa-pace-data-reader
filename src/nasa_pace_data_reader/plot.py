@@ -649,7 +649,7 @@ class Plot:
                             rgb[:, :, i] = rgb[:, :, i] / normFactor * scale[i]
                 except Exception as e:
                     print(f"...Error in normalizing the RGB image {e}")
-                    print("normFactor and scale shoulshould be an integer", normFactor)
+                    print("normFactor and scale should be an integer", normFactor)
         # Floor the rgb values to 0-1
         rgb = np.clip(rgb, 0, 1)
 

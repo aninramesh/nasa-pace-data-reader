@@ -84,10 +84,9 @@ class L2:
 
         correctFile = self.checkFile(filename)
         if not correctFile:
-            print(
-                f"Error: {filename} does not contain {self.instrument}-{self.product} L2 file."
+            raise ValueError(
+                f"{filename} does not contain {self.instrument}-{self.product} L2 file."
             )
-            return
 
         dataNC = Dataset(filename, "r")
         data = {}
@@ -146,9 +145,8 @@ class L2:
         except KeyError as e:
             print(f"Error: {filename} does not contain the required variables.")
             print("Error:", e)
-
-            # close the netCDF file
             dataNC.close()
+            raise
 
     def unit(self, var: str, units: str) -> None:
         """Returns the units for the variable."""
