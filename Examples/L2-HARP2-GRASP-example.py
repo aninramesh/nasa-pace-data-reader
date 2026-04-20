@@ -1,5 +1,6 @@
 from nasa_pace_data_reader import L1, L2, plot
 from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 import numpy as np
 # cartopy related imports
@@ -10,55 +11,154 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import warnings
 warnings.filterwarnings("ignore")
 
-# Helper to create a fresh figure with the RGB background
-# (cartopy GeoAxes cannot be deepcopied)
-def make_base_fig(rgb_, rgb_extent_, dpi=160):
-    fig = plt.figure(figsize=(3, 3), dpi=dpi)
+
+def concat_l1c_dicts(dict1, dict2):
+    """Concatenate two L1C dicts along the along-track (row) axis.
+    Spatial arrays (latitude, longitude, i, q, u, dolp, etc.) are concatenated;
+    metadata (view_angles, wavelengths, F0, _units, date_time) are kept from dict1.
+    """
+    combined = {}
+    # Keys that are spatial and should be concatenated along axis 0
+    spatial_keys = [k for k in dict1.keys()
+                    if k not in ('_units', 'date_time', 'view_angles',
+                                 'intensity_wavelength', 'polarization_wavelength',
+                                 'F0', 'polarization_f0')
+                    and isinstance(dict1[k], np.ndarray)]
+    for k in spatial_keys:
+        combined[k] = np.concatenate([dict1[k], dict2[k]], axis=0)
+    # Copy metadata from dict1
+    for k in dict1:
+        if k not in combined:
+            combined[k] = dict1[k]
+    return combined
+
+
+def concat_l2_dicts(dict1, dict2):
+    """Concatenate two L2 dicts along the along-track (row) axis.
+    Spatial arrays are concatenated; metadata (wavelengths, _units, date_time) are kept from dict1.
+    """
+    combined = {}
+    spatial_keys = [k for k in dict1.keys()
+                    if k not in ('_units', 'date_time', 'wavelengths')
+                    and isinstance(dict1[k], np.ndarray)]
+    for k in spatial_keys:
+        combined[k] = np.concatenate([dict1[k], dict2[k]], axis=0)
+    for k in dict1:
+        if k not in combined:
+            combined[k] = dict1[k]
+    return combined
+
+
+def make_combined_fig(rgb_, rgb_extent_, dpi=300):
+    """Create a figure with the combined RGB background."""
+    fig = plt.figure(figsize=(3, 5), dpi=dpi)
     ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    ax.set_facecolor('black')
+    ax.patch.set_facecolor('black')
     rgb_masked = np.ma.masked_where(rgb_ == 0, rgb_)
-    ax.imshow(rgb_masked, origin='lower', extent=rgb_extent_)
+    ax.imshow(rgb_masked, origin='lower', extent=rgb_extent_, transform=ccrs.PlateCarree())
     fig.patch.set_facecolor('black')
     return fig, ax
 
-# Local function to project the variable and copy the figure and axis
 
-def project_and_copy(l2, var, fig_base_, ax_base_, return_= False, **kwargs):
-    # do not use aod_mask if var in ['aot', 'aot_fine', 'aot_coarse']
+def plot_var(l2_dict, var, fig, ax, chi2Mask, aod_mask=None,
+             wavelength=None, saveFig=False, savePath=None,
+             limitTriangle=[0,0], **kwargs):
+    """Plot a variable from a combined L2 dict on the given axes."""
+    # do not use aod_mask for AOT-type and chi2 variables
     if var in ['aot', 'aot_fine', 'aot_coarse', 'chi2']:
-        kwargs['aod_mask'] = None
-    l2.projectVar(var, fig=fig_base_, ax=ax_base_, **kwargs)
-    if not return_:
-        del fig_base_, ax_base_
-    else:
-        return fig_base_, ax_base_
+        aod_mask = None
+
+    # resolve wavelength index
+    wl = wavelength if wavelength is not None else 550
+    idx = np.where(l2_dict['wavelengths'] == wl)[0][0]
+
+    # scalar variables (no wavelength dimension)
+    scalar_vars = ['chi2', 'n_iter', 'quality_flag', 'reff_coarse', 'reff_fine',
+                   'vd', 'windspeed', 'angstrom', 'alh', 'spherFrac']
+
+    # extract data
+    data = l2_dict[var][:, :] if var in scalar_vars else l2_dict[var][:, :, idx]
+
+    # apply masks
+    if chi2Mask is not None:
+        data = np.ma.masked_where(chi2Mask, data)
+    if aod_mask is not None:
+        data = np.ma.masked_where(aod_mask, data)
+
+    lon, lat = l2_dict['longitude'], l2_dict['latitude']
+
+    # strip non-matplotlib kwargs
+    plot_kwargs = {k: v for k, v in kwargs.items()
+                   if k not in ['saveFig', 'savePath', 'noAxisTicks',
+                                'black_background', 'chi2Mask', 'aod_mask',
+                                'dpi', 'limitTriangle']}
+
+    im = ax.pcolormesh(lon, lat, data, transform=ccrs.PlateCarree(), **plot_kwargs)
+
+    # styling
+    fig.patch.set_facecolor('black')
+    plt.rcParams['text.color'] = 'tan'
+    plt.rcParams['axes.labelcolor'] = 'grey'
+    plt.rcParams['xtick.color'] = 'tan'
+    plt.rcParams['ytick.color'] = 'tan'
+    plt.rcParams['axes.titlecolor'] = 'white'
+    plt.rcParams['axes.edgecolor'] = 'tan'
+    plt.rcParams['axes.facecolor'] = 'tan'
+
+    # title
+    ax.set_title(f'{var}' if var in scalar_vars else f'{var} at {wl} nm')
+    ax.coastlines()
+    ax.add_feature(cfeature.LAND, alpha=0.5)
+    ax.add_feature(cfeature.OCEAN, alpha=0.5)
+
+    # colorbar
+    divider = make_axes_locatable(ax)
+    ax_cb = divider.new_horizontal(size="5%", pad=0.1, axes_class=plt.Axes)
+    fig.add_axes(ax_cb)
+
+    extend = 'neither'
+    if limitTriangle[0] and limitTriangle[1]:
+        extend = 'both'
+    elif limitTriangle[0]:
+        extend = 'min'
+    elif limitTriangle[1]:
+        extend = 'max'
+    plt.colorbar(im, cax=ax_cb, extend=extend)
+
+    # save
+    if saveFig and savePath is not None:
+        wl_str = f'_{wl}nm' if var not in scalar_vars and wavelength is not None else ''
+        fig.savefig(f'{savePath}/{var}{wl_str}.png', dpi=kwargs.get('dpi', 300),
+                    bbox_inches='tight', facecolor=fig.get_facecolor())
+    plt.close(fig)
+
 
 # %% Main code
 
 # ---- Change the following parameters ---- #
 
-# location of the L2 file
+# location of the L2 files (consecutive granules)
 fileName = '/stor/z101/Data/PACE/HARP2/grasp/L2/v4-Beta/v01_a/PACE_HARP2.20240927T210427.L1C.V3.5km-v4-beta-01a.nc'
-# fileName2 = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/PACE_HARP2.20240907T172952.L1C.V2.5km-v0.2.4.IDOLP-test.nc'
+fileName2 = '/stor/z101/Data/PACE/HARP2/grasp/L2/v4-Beta/v01_a/PACE_HARP2.20240927T205927.L1C.V3.5km-v4-beta-01a.nc'
 
-# l1c file location
+# l1c file locations
 l1c_file = '/stor/z101/Data/PACE/HARP2/sds_test/V4/V01_c/L1C/PACE_HARP2.20240927T210427.L1C.V3.5km.nc'
+l1c_file2 = '/stor/z101/Data/PACE/HARP2/sds_test/V4/V01_c/L1C/PACE_HARP2.20240927T205927.L1C.V3.5km.nc'
 
 # save the plots in a folder
-# get the filename without extension
 fileName_no_ext = os.path.splitext(os.path.basename(fileName))[0]
-saveDir = f'/stor/z101/Data/PACE/HARP2/grasp/L2/v4-Beta/v01_c/figures/{fileName_no_ext}/'
+saveDir = f'/stor/z101/Data/PACE/HARP2/grasp/L2/v4-Beta/v01_c/figures/{fileName_no_ext}_combined/'
 
 dpi = 300
 cmap = 'Spectral_r'
 
-# chi2 filtering filter chi2 values greater than chiMax or chiMin
+# chi2 filtering
 chiMax = 8
 chiMin = 0.01
-l2_chi2_mask = True # None to not use it, True to use it
 
-# filtering the retrieved products based on the min AOD value
+# filtering based on min AOD value
 minAOD_550 = 0.05
-AOD_mask = True     # None to not use it, True to use it
 
 # extents of the plot
 AOD = [0, 0.3]
@@ -72,115 +172,104 @@ AE = [-0.2, 3]
 
 # ---- Do not change anything below this line ---- #
 
-# make sure the saveDir exists
 if not os.path.exists(saveDir):
     os.makedirs(saveDir)
 
-# Read the L1C file
+#%% Read and combine L1C data
 l1c = L1.L1C()
-l1c_dict = l1c.read(l1c_file)
+l1c_dict1 = l1c.read(l1c_file)
+l1c_dict2 = l1c.read(l1c_file2)
+l1c_combined = concat_l1c_dicts(l1c_dict1, l1c_dict2)
 
-# project the L1C data
-plt_ = plot.Plot(l1c_dict)
-plt_.setBand('Blue')
+# Create a Plot object with the combined data and project the RGB
+plt_combined = plot.Plot(l1c_combined)
+plt_combined.setBand('Blue')
 
-fig_base, ax_base, rgb_, rgb_extent_ = plt_.projectedRGB(normFactor=280, saveFig=True,
-                    dpi=dpi, figsize=(3,3), returnRGB=True)
+# Zero out edge rows to prevent nearest-neighbor interpolation artifacts
+# from meshgridRGB smearing edge pixels into streaks
+n_edge = 3
+n_rows_g1 = l1c_dict1['latitude'].shape[0]  # where granule 1 ends
+for var in ['i', 'q', 'u', 'dolp']:
+    if var in l1c_combined:
+        l1c_combined[var][:n_edge, ...] = 0          # top edge
+        l1c_combined[var][-n_edge:, ...] = 0         # bottom edge
+        l1c_combined[var][n_rows_g1-1:n_rows_g1+1, ...] = 0  # granule seam
+plt_combined.data = l1c_combined  # update the data reference
+fig_rgb, ax_rgb, rgb_, rgb_extent_ = plt_combined.projectedRGB(
+    normFactor=280, saveFig=False, dpi=dpi, figsize=(3, 5), returnRGB=True)
+plt.close(fig_rgb)
 
-# Save the RGB figure
-fig_base.patch.set_facecolor('black')
-fig_base.savefig(f'{saveDir}/RGB.png', dpi=dpi)
-plt.close(fig_base)
+# Save the combined RGB
+fig_rgb, ax_rgb = make_combined_fig(rgb_, rgb_extent_, dpi)
+fig_rgb.savefig(f'{saveDir}/RGB_combined.png', dpi=dpi, bbox_inches='tight',
+                facecolor=fig_rgb.get_facecolor())
+plt.close(fig_rgb)
 
-# Read the L2 file
-l2 = L2.L2()
-l2_dict = l2.read(fileName)
-if l2_dict is not None:
-    l2_chi2_mask = (l2_dict['chi2'] > chiMax) | (l2_dict['chi2'] < chiMin)
+#%% Read and combine L2 data
+l2_1 = L2.L2()
+l2_dict1 = l2_1.read(fileName)
+l2_2 = L2.L2()
+l2_dict2 = l2_2.read(fileName2)
+l2_combined = concat_l2_dicts(l2_dict1, l2_dict2)
 
-if AOD_mask is not None:
-    AOD_mask = l2_dict['aot'][:,:,1] < minAOD_550
+# Combined masks
+chi2Mask = (l2_combined['chi2'] > chiMax) | (l2_combined['chi2'] < chiMin)
+aod_mask = l2_combined['aot'][:,:,1] < minAOD_550
 
-# create a mask based on min AOD value
+#%% Plot all variables
 
-# Define the common parameters
-common_params = {'dpi': dpi, 'cmap': cmap, 'chi2Mask': l2_chi2_mask, 'saveFig': True, 'noAxisTicks': True,
-                  'black_background': True, 'savePath': saveDir, 'aod_mask': AOD_mask}
+common = dict(cmap=cmap, dpi=dpi, saveFig=True, savePath=saveDir)
 
-#%% plot the retrieved variables
+# AOT
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'aot', fig_, ax_, chi2Mask, aod_mask,
+         vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common)
 
-# Call the function for each variable
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-fig_test, ax_test = project_and_copy(l2, 'aot', fig_, ax_, return_= True, vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common_params)
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'aot_fine', fig_, ax_, chi2Mask, aod_mask,
+         vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'aot_fine', fig_, ax_, vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common_params)
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'aot_coarse', fig_, ax_, chi2Mask, aod_mask,
+         vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'aot_coarse', fig_, ax_, vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common_params)
+# SSA at multiple wavelengths
+for wl in [None, 670, 870, 440]:
+    fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+    plot_var(l2_combined, 'ssa_total', fig_, ax_, chi2Mask, aod_mask,
+             wavelength=wl, vmax=SSA[1], vmin=SSA[0], limitTriangle=[1,0], **common)
 
-wavelengths = [None, 670, 870, 440]
-for wavelength in wavelengths:
-    fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-    if wavelength is None:
-        project_and_copy(l2, 'ssa_total', fig_, ax_, vmax=SSA[1], vmin=SSA[0], limitTriangle=[1,0], **common_params)
-    else:
-        project_and_copy(l2, 'ssa_total', fig_, ax_, wavelength=wavelength, vmax=SSA[1], vmin=SSA[0], **common_params)
+# Reff
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'reff_coarse', fig_, ax_, chi2Mask, aod_mask,
+         vmin=Reff_coarse[0], vmax=Reff_coarse[1], limitTriangle=[0,1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'reff_coarse', fig_, ax_, vmin=Reff_coarse[0], vmax=Reff_coarse[1], limitTriangle=[0,1], **common_params)
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'reff_fine', fig_, ax_, chi2Mask, aod_mask,
+         vmin=Reff_fine[0], vmax=Reff_fine[1], limitTriangle=[1,1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-fig_test, ax_test = project_and_copy(l2, 'reff_fine', fig_, ax_, return_= True, vmin=Reff_fine[0], vmax=Reff_fine[1], limitTriangle=[1,1], **common_params)
+# Volume density
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'vd', fig_, ax_, chi2Mask, aod_mask, **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'vd', fig_, ax_, **common_params)
+# Refractive index
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'mr', fig_, ax_, chi2Mask, aod_mask,
+         wavelength=550, vmin=MR[0], vmax=MR[1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'mr', fig_, ax_, wavelength=550, vmin=MR[0], vmax=MR[1], **common_params)
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'mi', fig_, ax_, chi2Mask, aod_mask,
+         vmin=MI[0], vmax=MI[1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'mi', fig_, ax_, vmin=MI[0], vmax=MI[1], **common_params)
+# Angstrom exponent
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'angstrom', fig_, ax_, chi2Mask, aod_mask,
+         vmin=AE[0], vmax=AE[1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'angstrom', fig_, ax_, vmin=AE[0], vmax=AE[1], **common_params)
+# Chi2
+fig_, ax_ = make_combined_fig(rgb_, rgb_extent_, dpi)
+plot_var(l2_combined, 'chi2', fig_, ax_, chi2Mask,
+         vmax=chiMax, limitTriangle=[0,1], **common)
 
-fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
-project_and_copy(l2, 'chi2', fig_, ax_, vmax=chiMax, limitTriangle=[0,1], **common_params)
-
-'''
-# Read the L2 file
-l2 = L2.L2()
-l2_dict = l2.read(fileName2)
-if l2_dict is not None:
-    l2_chi2_mask = (l2_dict['chi2'] > chiMax) | (l2_dict['chi2'] < chiMin)
-    # additional filtering based on the aod values at 550 nmplt.c
-    l2_chi2_mask = l2_chi2_mask | (l2_dict['aot'][:, :,1] < 0.25)
-
-if AOD_mask is not None:
-    AOD_mask = l2_dict['aot'][:,:,1] < minAOD_550
-    
-# Define the common parameters
-common_params = {'dpi': dpi, 'cmap': cmap, 'chi2Mask': l2_chi2_mask, 'saveFig': True, 'noAxisTicks': True,
-                  'black_background': True, 'savePath': saveDir, 'aod_mask': AOD_mask}
-
-#%% plot the retrieved variables
-
-# Call the function for each variable
-# project_and_copy(l2, 'aot', fig_test, ax_test, vmax=1, vmin=0, limitTriangle=[0,1], **common_params)
-# project_and_copy(l2, 'aot_fine', fig_base, ax_base, vmax=1, vmin=0, limitTriangle=[0,1], **common_params)
-# project_and_copy(l2, 'aot_coarse', fig_base, ax_base, vmax=1, vmin=0, limitTriangle=[0,1], **common_params)
-# project_and_copy(l2, 'ssa_total', fig_base, ax_base, vmax=1, vmin=0.85, limitTriangle=[1,0], **common_params)
-# project_and_copy(l2, 'ssa_total', fig_base, ax_base, wavelength=670, vmax=1, vmin=0.85, **common_params)
-# project_and_copy(l2, 'ssa_total', fig_base, ax_base, wavelength=870, vmax=1, vmin=0.85, limitTriangle=[1,0], **common_params)
-# project_and_copy(l2, 'ssa_total', fig_base, ax_base, wavelength=440, vmax=1, vmin=0.85, **common_params)
-# project_and_copy(l2, 'reff_coarse', fig_base, ax_base, vmin=0.5, vmax=3, limitTriangle=[0,1], **common_params)
-# project_and_copy(l2, 'reff_fine', fig_test, ax_test, vmin=0.08, vmax=0.2, limitTriangle=[1,1], **common_params)
-# project_and_copy(l2, 'vd', fig_base, ax_base, **common_params)
-# project_and_copy(l2, 'mr', fig_base, ax_base, wavelength=550, vmin=1.33, vmax=1.7, **common_params)
-# project_and_copy(l2, 'mi', fig_base, ax_base, **common_params)
-# project_and_copy(l2, 'chi2', fig_base, ax_base, vmax=6, **common_params)
-
-# close the figures
-# plt.close('all')
-'''
+plt.close('all')
+print(f'All combined plots saved to {saveDir}')
