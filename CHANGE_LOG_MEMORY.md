@@ -1,18 +1,25 @@
 # Change Log Memory
 
-## [2026-04-19] — Merge consecutive L2 granules into single combined plots
+## [2026-04-19] — Merge consecutive L2 granules into seamless combined plots
 
-**Context:** The two L2 files are consecutive PACE granules. Instead of plotting them separately, we combine both onto a single figure per variable.
+**Context:** The two L2 files are consecutive PACE granules. Instead of plotting them separately, we concatenate all data along the along-track axis and produce seamless combined plots.
 
 **Files Changed:**
-- `Examples/L2-HARP2-GRASP-example.py` — complete rewrite: added `make_combined_fig()` (dual RGB background) and `plot_combined_var()` (overlays both L2 datasets on shared axes with single colorbar); removed dependency on `L2.projectVar` for combining
+- `Examples/L2-HARP2-GRASP-example.py` — complete rewrite with data concatenation approach:
+  - Added `concat_l1c_dicts()` / `concat_l2_dicts()` to merge spatial arrays along axis 0
+  - Single `projectedRGB` call on combined L1C data → seamless RGB, no gap
+  - Single `pcolormesh` per variable on combined L2 data
+  - Added edge-zeroing (top/bottom/granule seam) to prevent `meshgridRGB` nearest-neighbor interpolation artifacts
+  - Self-contained `plot_var()` function replaces dependency on `L2.projectVar`
+- `CHANGE_LOG_MEMORY.md` — updated
 
-**Summary:** Script now reads both L1C files for RGB, both L2 files for data, computes combined extent automatically, and produces one merged plot per variable saved to a `_combined/` output directory.
+**Summary:** Script concatenates both L1C and L2 data arrays along the along-track axis before any projection or plotting. This produces a seamless RGB background and unified data overlays with no inter-granule gap.
 
 **Special Notes:**
-- `plot_combined_var` strips non-matplotlib kwargs (dpi, savePath, etc.) before passing to `pcolormesh`
-- Figure size is (3, 5) to accommodate the taller combined extent
-- Both `pcolormesh` calls share the same `vmin`/`vmax` so colors are consistent across granules
+- Concatenation keys are auto-detected: spatial numpy arrays are concatenated, metadata (wavelengths, view_angles, F0, _units, date_time) are kept from dict1
+- Edge rows (top 3, bottom 3, seam 2) are zeroed before `projectedRGB` to prevent interpolation smearing
+- `plot_var` strips non-matplotlib kwargs (dpi, savePath, etc.) before passing to `pcolormesh`
+- Figure size is (3, 5) to accommodate the taller combined swath
 
 ---
 
