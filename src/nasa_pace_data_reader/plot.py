@@ -1,4 +1,4 @@
-'''# Standard library and third-party imports for data handling, plotting, and scientific computation.
+# Standard library and third-party imports for data handling, plotting, and scientific computation.
 import os
 import numpy as np
 from scipy import interpolate
@@ -52,6 +52,7 @@ class Plot:
         self.setInstrument(self.instrument)
         self.reflectance = False
         self.verbose = False
+        self.plotAll = False
         self.setPlotStyle()
 
 
@@ -212,10 +213,9 @@ class Plot:
         if axisLabel:
             plt.xlabel(xAxis)
             if unit_:
-                plt.ylabel(f'{dataVar}
-{unit_}')
+                plt.ylabel(f'{dataVar}{unit_}')
             elif dataVar != 'dolp':
-                plt.ylabel(r'R$_{%s} % dataVar)
+                plt.ylabel(r'R$_{%s} % dataVar')
             elif dataVar == 'dolp':
                 plt.ylabel(dataVar)
 
@@ -231,8 +231,7 @@ class Plot:
             ax_.set_ylim((ylim[0], ylim[1]))
 
         if title:
-            titleStr = f'{self.data["date_time"]} 
-Pixel ({x}, {y}) of the instrument {self.instrument}'
+            titleStr = f'{self.data["date_time"]} Pixel ({x}, {y}) of the instrument {self.instrument}'
             plt.title(titleStr)
 
         plt.show()
@@ -337,6 +336,10 @@ Pixel ({x}, {y}) of the instrument {self.instrument}'
                                      figsize=figsize, sharex=True, **kwargs)
             
             return fig_, ax_
+        else:
+            # create a single plot when not plotting all
+            fig_, ax_ = plt.subplots(figsize=figsize, **kwargs)
+            return fig_, ax_
 
 
     
@@ -363,6 +366,10 @@ Pixel ({x}, {y}) of the instrument {self.instrument}'
         if bands is None:
             self.plotAll = True
         self.bands2plot = self.bands if bands is None else bands
+        
+        # Set plotAll to True if we have multiple variables and bands to plot
+        if len(self.vars2plot) > 1 and len(self.bands2plot) > 1:
+            self.plotAll = True
         tempBands = self.bands
 
         # based on the instrument, set the band angles 
@@ -404,10 +411,9 @@ Pixel ({x}, {y}) of the instrument {self.instrument}'
                 # set the labels
                 if axisLabel and j == 0:
                     if (unit_ and showUnit):
-                        axAll[i,j].set_ylabel(f'{vars}
-{unit_}') 
+                        axAll[i,j].set_ylabel(f'{vars}{unit_}') 
                     elif self.reflectance:
-                        axAll[i,j].set_ylabel(r'R$_%s %vars) if not vars == 'dolp' else axAll[i,j].set_ylabel(vars)
+                        axAll[i,j].set_ylabel(r'R$_%s' %vars) if not vars == 'dolp' else axAll[i,j].set_ylabel(vars)
                     else:
                         axAll[i,j].set_ylabel(vars)
                     axAll[i,j].yaxis.set_label_coords(-0.25,0.5)
@@ -415,8 +421,7 @@ Pixel ({x}, {y}) of the instrument {self.instrument}'
                 if axisLabel and i == len(self.vars2plot)-1:
                     axAll[i,j].set_xlabel(xAxis)
 
-        plt.suptitle(f'{self.data["date_time"]} 
-Pixel ({x}, {y}) of the instrument {self.instrument}')
+        plt.suptitle(f'{self.data["date_time"]} Pixel ({x}, {y}) of the instrument {self.instrument}')
         plt.tight_layout()
         plt.show()
 
@@ -469,7 +474,7 @@ Pixel ({x}, {y}) of the instrument {self.instrument}')
             assert np.all(np.array(idx) < 5), 'Invalid viewAngleIdx'
 
         # Create a 3D array to store the RGB data
-        rgb = np.zeros((self.data[var].shape[0], self.data[var].shape[1], 3), dtype=np.float16)
+        rgb = np.zeros((self.data[var].shape[0], self.data[var].shape[1], 3), dtype=np.float32)
 
         # if the instrument is HARP2
         if self.instrument == 'HARP2':
@@ -543,17 +548,11 @@ Pixel ({x}, {y}) of the instrument {self.instrument}')
         if plot:
             plt.imshow(rgb, origin='lower')
             if self.instrument == 'HARP2':
-                plt.title(f'{self.data["date_time"]} 
-RGB image of the instrument {self.instrument}
- using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
+                plt.title(f'{self.data["date_time"]} RGB image of the instrument {self.instrument} using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
             elif self.instrument == 'OCI':
-                plt.title(f'{self.data["date_time"]} 
-RGB image of the instrument {self.instrument}
- using "{var}" variable at angle {viewAngleIdx[0]}', fontsize=8)
+                plt.title(f'{self.data["date_time"]} RGB image of the instrument {self.instrument} using "{var}" variable at angle {viewAngleIdx[0]}', fontsize=8)
             elif self.instrument == 'SPEXone':
-                plt.title(f'{self.data["date_time"]} 
-RGB image of the instrument {self.instrument}
- using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
+                plt.title(f'{self.data["date_time"]} RGB image of the instrument {self.instrument} using "{var}" variable at angles {idx[0]}, {idx[1]}, {idx[2]}', fontsize=8)
             plt.show()
 
         if returnRGB:
@@ -717,8 +716,7 @@ RGB image of the instrument {self.instrument}
             ax.set_ymargin(0.05)
 
             # round the view angle to 2 decimal places
-            ax.set_title(f'${var}{{({self.band})}}$ at {round(float(viewAngle), 2)}° viewing angle 
-of the instrument {self.instrument}')
+            ax.set_title(f'${var}{{({self.band})}}$ at {round(float(viewAngle), 2)}° viewing angle of the instrument {self.instrument}')
             plt.show()
 
             if saveFig:
@@ -909,8 +907,7 @@ of the instrument {self.instrument}')
                 # set the title using the date_time
                 fontColor = 'tan' if black_background else 'black'
                 if ax is not None:
-                    ax.set_title(f'RGB image of the instrument {self.instrument}
- {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
+                    ax.set_title(f'RGB image of the instrument {self.instrument} {self.data["date_time"]} at viewing angles {str(self.data["view_angles"][viewAngleIdx[0]])}', color=fontColor)
 
             plt.box(on=None)
             plt.show() if not noShow else None

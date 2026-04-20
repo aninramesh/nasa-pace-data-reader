@@ -1,5 +1,4 @@
 from nasa_pace_data_reader import L1, L2, plot
-import copy
 from matplotlib import pyplot as plt
 import os
 import numpy as np
@@ -11,13 +10,22 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import warnings
 warnings.filterwarnings("ignore")
 
+# Helper to create a fresh figure with the RGB background
+# (cartopy GeoAxes cannot be deepcopied)
+def make_base_fig(rgb_, rgb_extent_, dpi=160):
+    fig = plt.figure(figsize=(3, 3), dpi=dpi)
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    rgb_masked = np.ma.masked_where(rgb_ == 0, rgb_)
+    ax.imshow(rgb_masked, origin='lower', extent=rgb_extent_)
+    fig.patch.set_facecolor('black')
+    return fig, ax
+
 # Local function to project the variable and copy the figure and axis
 
 def project_and_copy(l2, var, fig_base_, ax_base_, return_= False, **kwargs):
     # do not use aod_mask if var in ['aot', 'aot_fine', 'aot_coarse']
     if var in ['aot', 'aot_fine', 'aot_coarse', 'chi2']:
         kwargs['aod_mask'] = None
-    # fig_, ax_ = copy.deepcopy((fig_base_, ax_base_))
     l2.projectVar(var, fig=fig_base_, ax=ax_base_, **kwargs)
     if not return_:
         del fig_base_, ax_base_
@@ -29,16 +37,18 @@ def project_and_copy(l2, var, fig_base_, ax_base_, return_= False, **kwargs):
 # ---- Change the following parameters ---- #
 
 # location of the L2 file
-fileName = '/Users/aputhukkudy/Downloads/PACE/L2/2p6/PACE_HARP2.20241102T071117.L1C.V2.5km-v0.2.6.IDOLP_3px.nc'
+fileName = '/stor/z101/Data/PACE/HARP2/grasp/L2/v4-Beta/v01_a/PACE_HARP2.20240927T210427.L1C.V3.5km-v4-beta-01a.nc'
 # fileName2 = '/Users/aputhukkudy/Downloads/PACE/L2/2p4-Vanderlei/PACE_HARP2.20240907T172952.L1C.V2.5km-v0.2.4.IDOLP-test.nc'
 
 # l1c file location
-l1c_file = '/Users/aputhukkudy/Downloads/PACE_HARP2.20241102T071117.L1C.V2.5km.nc'
+l1c_file = '/stor/z101/Data/PACE/HARP2/sds_test/V4/V01_c/L1C/PACE_HARP2.20240927T210427.L1C.V3.5km.nc'
 
 # save the plots in a folder
-saveDir = '/Users/aputhukkudy/Downloads/PACE/L2/2p6/20241102T071117/'
+# get the filename without extension
+fileName_no_ext = os.path.splitext(os.path.basename(fileName))[0]
+saveDir = f'/stor/z101/Data/PACE/HARP2/grasp/L2/v4-Beta/v01_c/figures/{fileName_no_ext}/'
 
-dpi = 160
+dpi = 300
 cmap = 'Spectral_r'
 
 # chi2 filtering filter chi2 values greater than chiMax or chiMin
@@ -47,11 +57,11 @@ chiMin = 0.01
 l2_chi2_mask = True # None to not use it, True to use it
 
 # filtering the retrieved products based on the min AOD value
-minAOD_550 = 0.25
+minAOD_550 = 0.05
 AOD_mask = True     # None to not use it, True to use it
 
 # extents of the plot
-AOD = [0, 1]
+AOD = [0, 0.3]
 SSA = [0.85, 1]
 Reff_coarse = [0.5, 3]
 Reff_fine = [0.08, 0.35]
@@ -77,13 +87,10 @@ plt_.setBand('Blue')
 fig_base, ax_base, rgb_, rgb_extent_ = plt_.projectedRGB(normFactor=280, saveFig=True,
                     dpi=dpi, figsize=(3,3), returnRGB=True)
 
-# fig_base = plt.figure(figsize=(3,3), dpi=dpi)
-# ax_base = plt.axes(projection=ccrs.PlateCarree())
-# change the font color
+# Save the RGB figure
 fig_base.patch.set_facecolor('black')
-# axis labels and ticks font color
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
-fig_.savefig(f'{saveDir}/RGB.png', dpi=dpi)
+fig_base.savefig(f'{saveDir}/RGB.png', dpi=dpi)
+plt.close(fig_base)
 
 # Read the L2 file
 l2 = L2.L2()
@@ -103,42 +110,42 @@ common_params = {'dpi': dpi, 'cmap': cmap, 'chi2Mask': l2_chi2_mask, 'saveFig': 
 #%% plot the retrieved variables
 
 # Call the function for each variable
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 fig_test, ax_test = project_and_copy(l2, 'aot', fig_, ax_, return_= True, vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'aot_fine', fig_, ax_, vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'aot_coarse', fig_, ax_, vmax=AOD[1], vmin=AOD[0], limitTriangle=[0,1], **common_params)
 
 wavelengths = [None, 670, 870, 440]
 for wavelength in wavelengths:
-    fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+    fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
     if wavelength is None:
         project_and_copy(l2, 'ssa_total', fig_, ax_, vmax=SSA[1], vmin=SSA[0], limitTriangle=[1,0], **common_params)
     else:
         project_and_copy(l2, 'ssa_total', fig_, ax_, wavelength=wavelength, vmax=SSA[1], vmin=SSA[0], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'reff_coarse', fig_, ax_, vmin=Reff_coarse[0], vmax=Reff_coarse[1], limitTriangle=[0,1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 fig_test, ax_test = project_and_copy(l2, 'reff_fine', fig_, ax_, return_= True, vmin=Reff_fine[0], vmax=Reff_fine[1], limitTriangle=[1,1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'vd', fig_, ax_, **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'mr', fig_, ax_, wavelength=550, vmin=MR[0], vmax=MR[1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'mi', fig_, ax_, vmin=MI[0], vmax=MI[1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'angstrom', fig_, ax_, vmin=AE[0], vmax=AE[1], **common_params)
 
-fig_, ax_ = copy.deepcopy((fig_base, ax_base))
+fig_, ax_ = make_base_fig(rgb_, rgb_extent_, dpi)
 project_and_copy(l2, 'chi2', fig_, ax_, vmax=chiMax, limitTriangle=[0,1], **common_params)
 
 '''
